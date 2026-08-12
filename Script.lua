@@ -32,6 +32,11 @@ corner.Parent = button
 
 button.Activated:Connect(function()
     local character = player.Character
-    if not character then
-        return
-    end
+    if not character then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    humanoid.Jump = true
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+end)
