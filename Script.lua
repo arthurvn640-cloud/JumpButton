@@ -35,16 +35,3 @@ button.Activated:Connect(function()
     if not character then
         return
     end
-
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then
-        return
-    end
-
-    if humanoid.Health <= 0 then
-        return
-    end
-
-    humanoid.Jump = true
-    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-end)
