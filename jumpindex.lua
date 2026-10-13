@@ -1,9 +1,9 @@
 --[[
     jumpindex.lua
     Botão de pular para EXECUTORES DE ROBLOX.
-    - Botão principal ⬆
-    - Botão de Infinite Jump embaixo
-    - Sem pulo duplo
+    - Toggle "∞ ON / ∞ OFF" arma o infinite jump
+    - Com infinite ON, SEGURAR o botão ⬆ ativa o voo/pulo infinito
+    - Soltar o botão ⬆ para o infinite
 --]]
 
 local Players = game:GetService("Players")
@@ -29,7 +29,7 @@ screenGui.DisplayOrder = 999
 screenGui.Parent = playerGui
 
 ------------------------------------------------------------
--- FRAME PAI (guarda os dois botões juntos)
+-- FRAME PAI
 ------------------------------------------------------------
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
@@ -84,7 +84,7 @@ textSize.MaxTextSize = 30
 textSize.Parent = botao
 
 ------------------------------------------------------------
--- BOTÃO DE INFINITE JUMP (embaixo do principal)
+-- TOGGLE INFINITE JUMP
 ------------------------------------------------------------
 local toggleContainer = Instance.new("Frame")
 toggleContainer.Name = "ContainerToggle"
@@ -144,21 +144,16 @@ botao.MouseLeave:Connect(function()
     animar(UDim2.new(0, 50, 0, 50), UDim2.new(0, 5, 0, 0))
 end)
 
-botao.MouseButton1Down:Connect(function()
-    animar(UDim2.new(0, 44, 0, 44), UDim2.new(0, 8, 0, 3))
-end)
-
-botao.MouseButton1Up:Connect(function()
-    animar(UDim2.new(0, 58, 0, 58), UDim2.new(0, 1, 0, -4))
-end)
-
 ------------------------------------------------------------
--- ESTADO DO INFINITE JUMP
+-- ESTADOS
 ------------------------------------------------------------
-local infiniteJumpAtivado = false
+local infiniteArmado = false   -- toggle ∞ ON ?
+local infiniteAtivo  = false   -- segurando o botão ⬆ ?
+local segurando      = false   -- botão está sendo pressionado ?
 
+-- Atualiza o visual do toggle
 local function atualizarVisualToggle()
-    if infiniteJumpAtivado then
+    if infiniteArmado then
         toggleBtn.Text = "∞ ON"
         toggleBtn.TextColor3 = Color3.fromRGB(120, 255, 160)
         toggleStroke.Color = Color3.fromRGB(80, 255, 130)
@@ -171,14 +166,50 @@ local function atualizarVisualToggle()
     end
 end
 
+-- Atualiza o visual do botão de pular conforme o estado
+local function atualizarVisualBotao()
+    if infiniteAtivo then
+        -- Verde (infinite voando)
+        container.BackgroundColor3 = Color3.fromRGB(80, 220, 120)
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 255, 160)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 140, 60))
+        })
+    elseif infiniteArmado then
+        -- Verde escuro (armado, esperando segurar)
+        container.BackgroundColor3 = Color3.fromRGB(40, 110, 70)
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 100)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 50))
+        })
+    else
+        -- Azul normal
+        container.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+        gradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
+        })
+    end
+end
+
+------------------------------------------------------------
+-- TOGGLE
+------------------------------------------------------------
 toggleBtn.MouseButton1Click:Connect(function()
-    infiniteJumpAtivado = not infiniteJumpAtivado
+    infiniteArmado = not infiniteArmado
+
+    if not infiniteArmado then
+        infiniteAtivo = false
+        segurando = false
+    end
+
     atualizarVisualToggle()
-    print("[jumpindex] Infinite Jump: " .. (infiniteJumpAtivado and "ATIVADO" or "DESATIVADO"))
+    atualizarVisualBotao()
+    print("[jumpindex] Infinite Jump: " .. (infiniteArmado and "ON" or "OFF"))
 end)
 
 toggleBtn.MouseEnter:Connect(function()
-    if not infiniteJumpAtivado then
+    if not infiniteArmado then
         toggleContainer.BackgroundColor3 = Color3.fromRGB(50, 65, 90)
     else
         toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 90, 55)
@@ -190,13 +221,12 @@ toggleBtn.MouseLeave:Connect(function()
 end)
 
 ------------------------------------------------------------
--- FUNÇÃO DE PULO
+-- FUNÇÃO DE PULO NORMAL
 ------------------------------------------------------------
 local ultimoPulo = 0
 
-local function pular()
+local function pularNormal()
     local agora = tick()
-    -- Cooldown de 0.25s (impede duplo pulo mesmo se clicar logo após pular normal)
     if agora - ultimoPulo < 0.25 then return end
 
     local character = player.Character
@@ -205,14 +235,12 @@ local function pular()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    -- Bloqueia se já estiver pulando ou caindo
     local estado = humanoid:GetState()
     if estado == Enum.HumanoidStateType.Jumping 
        or estado == Enum.HumanoidStateType.Freefall then
         return
     end
 
-    -- Bloqueia se estiver no ar
     if humanoid.FloorMaterial == Enum.Material.Air then return end
 
     ultimoPulo = agora
@@ -223,14 +251,55 @@ local function pular()
     end)
 end
 
-botao.MouseButton1Click:Connect(pular)
-botao.TouchTap:Connect(pular)
+------------------------------------------------------------
+-- INPUT DO BOTÃO ⬆ (segurar / soltar)
+------------------------------------------------------------
+-- PRESSIONAR
+local function aoPressionar()
+    segurando = true
+    animar(UDim2.new(0, 44, 0, 44), UDim2.new(0, 8, 0, 3))
+
+    if infiniteArmado then
+        -- Ativa o infinite enquanto estiver segurando
+        infiniteAtivo = true
+        atualizarVisualBotao()
+        print("[jumpindex] Infinite Jump ATIVO (segurando)")
+    else
+        -- Pulo normal
+        pularNormal()
+    end
+end
+
+-- SOLTAR
+local function aoSoltar()
+    segurando = false
+    animar(UDim2.new(0, 50, 0, 50), UDim2.new(0, 5, 0, 0))
+
+    if infiniteAtivo then
+        infiniteAtivo = false
+        atualizarVisualBotao()
+        print("[jumpindex] Infinite Jump PARADO (soltou)")
+    end
+end
+
+botao.MouseButton1Down:Connect(aoPressionar)
+botao.MouseButton1Up:Connect(aoSoltar)
+botao.MouseLeave:Connect(function()
+    if segurando then
+        aoSoltar()
+    end
+    animar(UDim2.new(0, 50, 0, 50), UDim2.new(0, 5, 0, 0))
+end)
+
+-- Suporte a toque (mobile) — segurar e soltar
+botao.TouchLongPress:Connect(aoPressionar)
+botao.TouchEnded:Connect(aoSoltar)
 
 ------------------------------------------------------------
--- LOOP DO INFINITE JUMP (só quando ativado)
+-- LOOP DO INFINITE (só quando infiniteAtivo)
 ------------------------------------------------------------
 RunService.RenderStepped:Connect(function()
-    if not infiniteJumpAtivado then return end
+    if not infiniteAtivo then return end
 
     local character = player.Character
     if not character then return end
@@ -248,4 +317,5 @@ end)
 -- INICIALIZAR
 ------------------------------------------------------------
 atualizarVisualToggle()
-print("[jumpindex] Carregado! Toggle visível? " .. tostring(toggleContainer.Visible))
+atualizarVisualBotao()
+print("[jumpindex] Carregado!")
