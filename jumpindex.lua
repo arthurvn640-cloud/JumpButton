@@ -1,11 +1,14 @@
 --[[
     jumpindex.lua
-    - ∞ OFF: clicar ⬆ = 1 pulo normal
+    - ∞ OFF: clicar ⬆ = 1 pulo normal (igual Roblox, sai de cadeira)
     - ∞ ON: SEGURAR ⬆ = pula infinitamente / soltar = para
+    - Botão ⬆ pisca em azul claro ao clicar (sem mudar de tamanho)
+    - Toggle ∞ sem animação
 --]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -109,10 +112,29 @@ toggleTextSize.Parent = toggleBtn
 local infiniteArmado = false
 local segurando      = false
 local loopRodando    = false
+local piscando       = false
 
 ------------------------------------------------------------
 -- VISUAIS
 ------------------------------------------------------------
+local COR_AZUL_NORMAL = Color3.fromRGB(50, 130, 255)
+local COR_AZUL_CLARO  = Color3.fromRGB(150, 200, 255)
+local COR_VERDE_ARM   = Color3.fromRGB(40, 110, 70)
+local COR_VERDE_ATIVO = Color3.fromRGB(80, 220, 120)
+
+local GRAD_NORMAL = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
+})
+local GRAD_ARM = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 50))
+})
+local GRAD_ATIVO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 255, 160)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 140, 60))
+})
+
 local function atualizarToggle()
     if infiniteArmado then
         toggleBtn.Text = "∞ ON"
@@ -126,29 +148,36 @@ local function atualizarToggle()
 end
 
 local function atualizarVisualBotao()
+    if piscando then return end -- não mexe se estiver piscando
+
     if segurando then
-        container.BackgroundColor3 = Color3.fromRGB(80, 220, 120)
-        gradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 255, 160)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 140, 60))
-        })
+        container.BackgroundColor3 = COR_VERDE_ATIVO
+        gradient.Color = GRAD_ATIVO
     elseif infiniteArmado then
-        container.BackgroundColor3 = Color3.fromRGB(40, 110, 70)
-        gradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 100)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 50))
-        })
+        container.BackgroundColor3 = COR_VERDE_ARM
+        gradient.Color = GRAD_ARM
     else
-        container.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
-        gradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
-        })
+        container.BackgroundColor3 = COR_AZUL_NORMAL
+        gradient.Color = GRAD_NORMAL
     end
 end
 
 ------------------------------------------------------------
--- PULO NORMAL
+-- FLASH AZUL CLARO
+------------------------------------------------------------
+local function piscarAzulClaro()
+    piscando = true
+    container.BackgroundColor3 = COR_AZUL_CLARO
+    gradient.Color = ColorSequence.new(COR_AZUL_CLARO)
+
+    task.delay(0.1, function()
+        piscando = false
+        atualizarVisualBotao()
+    end)
+end
+
+------------------------------------------------------------
+-- PULO NORMAL (igual Roblox — sai de cadeira)
 ------------------------------------------------------------
 local ultimoPulo = 0
 
@@ -162,23 +191,29 @@ local function pularNormal()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    local estado = humanoid:GetState()
-    if estado == Enum.HumanoidStateType.Jumping
-       or estado == Enum.HumanoidStateType.Freefall then
-        return
-    end
-    if humanoid.FloorMaterial == Enum.Material.Air then return end
-
     ultimoPulo = agora
 
     pcall(function()
+        if humanoid.Sit then
+            humanoid.Sit = false
+        end
+    end)
+
+    pcall(function()
         humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+    end)
+
+    pcall(function()
+        humanoid.Jump = true
+    end)
+
+    pcall(function()
         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end)
 end
 
 ------------------------------------------------------------
--- LOOP DO INFINITE (usando task.spawn)
+-- LOOP DO INFINITE
 ------------------------------------------------------------
 local function loopInfinite()
     if loopRodando then return end
@@ -203,7 +238,7 @@ local function loopInfinite()
 end
 
 ------------------------------------------------------------
--- TOGGLE
+-- TOGGLE (sem animação)
 ------------------------------------------------------------
 toggleBtn.MouseButton1Click:Connect(function()
     infiniteArmado = not infiniteArmado
@@ -212,37 +247,32 @@ toggleBtn.MouseButton1Click:Connect(function()
     end
     atualizarToggle()
     atualizarVisualBotao()
-    print("[jumpindex] Toggle: " .. (infiniteArmado and "ON" or "OFF"))
 end)
 
 ------------------------------------------------------------
 -- INPUT DO BOTÃO ⬆
 ------------------------------------------------------------
 local function aoPressionar()
-    print("[jumpindex] Pressionou ⬆ | ∞ = " .. tostring(infiniteArmado))
-
     if infiniteArmado then
         segurando = true
         atualizarVisualBotao()
         loopInfinite()
     else
+        piscarAzulClaro()
         pularNormal()
     end
 end
 
 local function aoSoltar()
     if segurando then
-        print("[jumpindex] Soltou ⬆")
         segurando = false
         atualizarVisualBotao()
     end
 end
 
--- Eventos diretos do botão
 botao.MouseButton1Down:Connect(aoPressionar)
 botao.MouseButton1Up:Connect(aoSoltar)
 
--- Eventos globais (para pegar quando solta fora do botão)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
     or input.UserInputType == Enum.UserInputType.Touch then
