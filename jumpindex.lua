@@ -2,12 +2,12 @@
     jumpindex.lua
     - ∞ OFF: clicar ⬆ = 1 pulo normal (sai de cadeira/carro)
     - ∞ ON: SEGURAR ⬆ = pula infinitamente / soltar = para
-    - Botão ⬆ pisca azul claro ao clicar (bem visível)
+    - Botão ⬆ pisca azul claro ao clicar no OFF
+    - Sem spam de pulo no OFF
 --]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -108,10 +108,10 @@ toggleTextSize.Parent = toggleBtn
 ------------------------------------------------------------
 -- CORES
 ------------------------------------------------------------
-local COR_AZUL_NORMAL   = Color3.fromRGB(50, 130, 255)
-local COR_AZUL_CLARO    = Color3.fromRGB(200, 230, 255)  -- bem claro, quase branco
-local COR_VERDE_ARM     = Color3.fromRGB(40, 110, 70)
-local COR_VERDE_ATIVO   = Color3.fromRGB(80, 220, 120)
+local COR_AZUL_NORMAL = Color3.fromRGB(50, 130, 255)
+local COR_AZUL_CLARO  = Color3.fromRGB(200, 230, 255)
+local COR_VERDE_ARM   = Color3.fromRGB(40, 110, 70)
+local COR_VERDE_ATIVO = Color3.fromRGB(80, 220, 120)
 
 local GRAD_NORMAL = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
@@ -169,7 +169,7 @@ local function atualizarVisualBotao()
 end
 
 ------------------------------------------------------------
--- PISCA AZUL CLARO (bem visível, 0.2s)
+-- PISCA AZUL CLARO
 ------------------------------------------------------------
 local function piscarAzulClaro()
     piscando = true
@@ -184,14 +184,26 @@ local function piscarAzulClaro()
 end
 
 ------------------------------------------------------------
--- PULO NORMAL (SAI DE CADEIRA / CARRO)
+-- PULO NORMAL — COM ANTI-SPAM
 ------------------------------------------------------------
 local ultimoPulo = 0
+local COOLDOWN = 0.6 -- aumentado: 0.6s entre cada pulo
+
+local function estaNoChao(humanoid)
+    local estado = humanoid:GetState()
+    if estado == Enum.HumanoidStateType.Jumping
+    or estado == Enum.HumanoidStateType.Freefall then
+        return false
+    end
+    if humanoid.FloorMaterial == Enum.Material.Air then
+        return false
+    end
+    return true
+end
 
 local function pularNormal()
     local agora = tick()
-    if agora - ultimoPulo < 0.25 then return end
-    ultimoPulo = agora
+    if agora - ultimoPulo < COOLDOWN then return end
 
     local character = player.Character
     if not character then return end
@@ -199,21 +211,19 @@ local function pularNormal()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    -- Se está sentado (cadeira, carro, banco), primeiro levanta e depois pula
+    -- Se estiver sentado, levanta e pula
     if humanoid.Sit then
+        ultimoPulo = agora
         pcall(function()
             humanoid.Sit = false
         end)
 
-        -- Espera um frame pro Roblox quebrar o Weld do assento
         task.spawn(function()
             task.wait(0.05)
-
             local char = player.Character
             if not char then return end
             local hum = char:FindFirstChildOfClass("Humanoid")
             if not hum then return end
-
             pcall(function()
                 hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
             end)
@@ -224,18 +234,23 @@ local function pularNormal()
                 hum:ChangeState(Enum.HumanoidStateType.Jumping)
             end)
         end)
-    else
-        -- Pulo normal (não está sentado)
-        pcall(function()
-            humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        end)
-        pcall(function()
-            humanoid.Jump = true
-        end)
-        pcall(function()
-            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-        end)
+        return
     end
+
+    -- Se NÃO está no chão, ignora o clique
+    if not estaNoChao(humanoid) then return end
+
+    ultimoPulo = agora
+
+    pcall(function()
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+    end)
+    pcall(function()
+        humanoid.Jump = true
+    end)
+    pcall(function()
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end)
 end
 
 ------------------------------------------------------------
