@@ -5,9 +5,7 @@
 --]]
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -22,7 +20,6 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.DisplayOrder = 999
 screenGui.Parent = playerGui
 
@@ -50,12 +47,6 @@ container.Parent = mainFrame
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(1, 0)
 corner.Parent = container
-
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(255, 255, 255)
-stroke.Thickness = 2
-stroke.Transparency = 0.5
-stroke.Parent = container
 
 local gradient = Instance.new("UIGradient")
 gradient.Color = ColorSequence.new({
@@ -96,11 +87,6 @@ local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(0, 6)
 toggleCorner.Parent = toggleContainer
 
-local toggleStroke = Instance.new("UIStroke")
-toggleStroke.Color = Color3.fromRGB(80, 130, 220)
-toggleStroke.Thickness = 1.5
-toggleStroke.Parent = toggleContainer
-
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Name = "BtnToggle"
 toggleBtn.Size = UDim2.new(1, 0, 1, 0)
@@ -122,6 +108,7 @@ toggleTextSize.Parent = toggleBtn
 ------------------------------------------------------------
 local infiniteArmado = false
 local segurando      = false
+local loopRodando    = false
 
 ------------------------------------------------------------
 -- VISUAIS
@@ -130,12 +117,10 @@ local function atualizarToggle()
     if infiniteArmado then
         toggleBtn.Text = "∞ ON"
         toggleBtn.TextColor3 = Color3.fromRGB(120, 255, 160)
-        toggleStroke.Color = Color3.fromRGB(80, 255, 130)
         toggleContainer.BackgroundColor3 = Color3.fromRGB(25, 70, 40)
     else
         toggleBtn.Text = "∞ OFF"
         toggleBtn.TextColor3 = Color3.fromRGB(180, 200, 230)
-        toggleStroke.Color = Color3.fromRGB(80, 130, 220)
         toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
     end
 end
@@ -161,19 +146,6 @@ local function atualizarVisualBotao()
         })
     end
 end
-
-------------------------------------------------------------
--- TOGGLE
-------------------------------------------------------------
-toggleBtn.MouseButton1Click:Connect(function()
-    infiniteArmado = not infiniteArmado
-    if not infiniteArmado then
-        segurando = false
-    end
-    atualizarToggle()
-    atualizarVisualBotao()
-    print("[jumpindex] Toggle: " .. (infiniteArmado and "ON" or "OFF"))
-end)
 
 ------------------------------------------------------------
 -- PULO NORMAL
@@ -206,65 +178,76 @@ local function pularNormal()
 end
 
 ------------------------------------------------------------
--- DETECÇÃO DE POSIÇÃO
+-- LOOP DO INFINITE (usando task.spawn)
 ------------------------------------------------------------
-local function estaDentroDoBotao(posicao)
-    local absPos  = container.AbsolutePosition
-    local absSize = container.AbsoluteSize
-    return posicao.X >= absPos.X and posicao.X <= absPos.X + absSize.X
-       and posicao.Y >= absPos.Y and posicao.Y <= absPos.Y + absSize.Y
+local function loopInfinite()
+    if loopRodando then return end
+    loopRodando = true
+
+    task.spawn(function()
+        while segurando and infiniteArmado do
+            local character = player.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    pcall(function()
+                        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end)
+                end
+            end
+            task.wait(0.05)
+        end
+        loopRodando = false
+    end)
 end
 
 ------------------------------------------------------------
--- INPUT GLOBAL
+-- TOGGLE
 ------------------------------------------------------------
-UserInputService.InputBegan:Connect(function(input, processado)
-    if processado then return end
-
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-
-        if estaDentroDoBotao(input.Position) then
-            print("[jumpindex] Pressionou ⬆ | ∞ = " .. tostring(infiniteArmado))
-
-            if infiniteArmado then
-                segurando = true
-                atualizarVisualBotao()
-            else
-                pularNormal()
-            end
-        end
+toggleBtn.MouseButton1Click:Connect(function()
+    infiniteArmado = not infiniteArmado
+    if not infiniteArmado then
+        segurando = false
     end
+    atualizarToggle()
+    atualizarVisualBotao()
+    print("[jumpindex] Toggle: " .. (infiniteArmado and "ON" or "OFF"))
 end)
 
+------------------------------------------------------------
+-- INPUT DO BOTÃO ⬆
+------------------------------------------------------------
+local function aoPressionar()
+    print("[jumpindex] Pressionou ⬆ | ∞ = " .. tostring(infiniteArmado))
+
+    if infiniteArmado then
+        segurando = true
+        atualizarVisualBotao()
+        loopInfinite()
+    else
+        pularNormal()
+    end
+end
+
+local function aoSoltar()
+    if segurando then
+        print("[jumpindex] Soltou ⬆")
+        segurando = false
+        atualizarVisualBotao()
+    end
+end
+
+-- Eventos diretos do botão
+botao.MouseButton1Down:Connect(aoPressionar)
+botao.MouseButton1Up:Connect(aoSoltar)
+
+-- Eventos globais (para pegar quando solta fora do botão)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
     or input.UserInputType == Enum.UserInputType.Touch then
-
-        if segurando then
-            segurando = false
-            atualizarVisualBotao()
-            print("[jumpindex] Soltou ⬆")
-        end
+        aoSoltar()
     end
-end)
-
-------------------------------------------------------------
--- LOOP: pula infinito enquanto armado E segurando
-------------------------------------------------------------
-RunService.RenderStepped:Connect(function()
-    if not (infiniteArmado and segurando) then return end
-
-    local character = player.Character
-    if not character then return end
-
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    pcall(function()
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end)
 end)
 
 ------------------------------------------------------------
