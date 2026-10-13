@@ -1,22 +1,24 @@
 --[[
     jumpindex.lua
     Botão de pular para EXECUTORES DE ROBLOX.
-    Versão final: pulo nativo, sai de cadeiras e não trava.
+    - Botão principal ⬆ (canto superior direito)
+    - Botão de ativar/desativar Infinite Jump (embaixo do principal)
+    - Sem pulo duplo ao clicar
 --]]
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Remove a GUI antiga se ela já existir
 local antiga = playerGui:FindFirstChild("BotaoPularGui")
 if antiga then antiga:Destroy() end
 
 ------------------------------------------------------------
--- INTERFACE GRÁFICA (GUI)
+-- SCREEN GUI
 ------------------------------------------------------------
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
@@ -25,7 +27,9 @@ screenGui.IgnoreGuiInset = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
--- Botão (Canto Superior Direito)
+------------------------------------------------------------
+-- BOTÃO PRINCIPAL ⬆
+------------------------------------------------------------
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 50, 0, 50)
@@ -69,7 +73,43 @@ textSize.MaxTextSize = 30
 textSize.Parent = botao
 
 ------------------------------------------------------------
--- ANIMAÇÕES DO BOTÃO
+-- BOTÃO DE INFINITE JUMP (embaixo do principal)
+------------------------------------------------------------
+local toggleContainer = Instance.new("Frame")
+toggleContainer.Name = "ContainerToggle"
+toggleContainer.Size = UDim2.new(0, 50, 0, 22)
+toggleContainer.Position = UDim2.new(1, -70, 0, 78)
+toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+toggleContainer.BorderSizePixel = 0
+toggleContainer.Parent = screenGui
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 6)
+toggleCorner.Parent = toggleContainer
+
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Color = Color3.fromRGB(80, 130, 220)
+toggleStroke.Thickness = 1.5
+toggleStroke.Parent = toggleContainer
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "BtnToggle"
+toggleBtn.Size = UDim2.new(1, 0, 1, 0)
+toggleBtn.BackgroundTransparency = 1
+toggleBtn.Text = "∞ OFF"
+toggleBtn.TextColor3 = Color3.fromRGB(180, 200, 230)
+toggleBtn.TextScaled = true
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.AutoButtonColor = false
+toggleBtn.Active = true
+toggleBtn.Parent = toggleContainer
+
+local toggleTextSize = Instance.new("UITextSizeConstraint")
+toggleTextSize.MaxTextSize = 13
+toggleTextSize.Parent = toggleBtn
+
+------------------------------------------------------------
+-- ANIMAÇÕES DO BOTÃO PRINCIPAL
 ------------------------------------------------------------
 local tweenAtual = nil
 
@@ -78,7 +118,6 @@ local function animar(tamanho, posicao)
         tweenAtual:Cancel()
         tweenAtual = nil
     end
-
     tweenAtual = TweenService:Create(container, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
         Size = tamanho,
         Position = posicao
@@ -103,15 +142,50 @@ botao.MouseButton1Up:Connect(function()
 end)
 
 ------------------------------------------------------------
--- FUNÇÃO DE PULO (VERSÃO CORRIGIDA)
+-- ESTADO DO INFINITE JUMP
+------------------------------------------------------------
+local infiniteJumpAtivado = false
+
+local function atualizarVisualToggle()
+    if infiniteJumpAtivado then
+        toggleBtn.Text = "∞ ON"
+        toggleBtn.TextColor3 = Color3.fromRGB(120, 255, 160)
+        toggleStroke.Color = Color3.fromRGB(80, 255, 130)
+        toggleContainer.BackgroundColor3 = Color3.fromRGB(25, 70, 40)
+    else
+        toggleBtn.Text = "∞ OFF"
+        toggleBtn.TextColor3 = Color3.fromRGB(180, 200, 230)
+        toggleStroke.Color = Color3.fromRGB(80, 130, 220)
+        toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+    end
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+    infiniteJumpAtivado = not infiniteJumpAtivado
+    atualizarVisualToggle()
+    print("[jumpindex] Infinite Jump: " .. (infiniteJumpAtivado and "ATIVADO" or "DESATIVADO"))
+end)
+
+toggleBtn.MouseEnter:Connect(function()
+    if not infiniteJumpAtivado then
+        toggleContainer.BackgroundColor3 = Color3.fromRGB(50, 65, 90)
+    else
+        toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 90, 55)
+    end
+end)
+
+toggleBtn.MouseLeave:Connect(function()
+    atualizarVisualToggle()
+end)
+
+------------------------------------------------------------
+-- FUNÇÃO DE PULO (sem pulo duplo)
 ------------------------------------------------------------
 local ultimoPulo = 0
 
 local function pular()
-    -- Cooldown para evitar sobrecarga em cliques rápidos
     local agora = tick()
     if agora - ultimoPulo < 0.1 then return end
-    ultimoPulo = agora
 
     local character = player.Character
     if not character then return end
@@ -119,25 +193,27 @@ local function pular()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    -- 1. Garante que o estado de pulo está habilitado
+    -- Não pula se já estiver pulando ou caindo (evita pulo duplo)
+    local estado = humanoid:GetState()
+    if estado == Enum.HumanoidStateType.Jumping 
+       or estado == Enum.HumanoidStateType.Freefall then
+        return
+    end
+
+    -- Não pula se estiver no ar
+    if humanoid.FloorMaterial == Enum.Material.Air then return end
+
+    ultimoPulo = agora
+
     pcall(function()
         humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-    end)
-
-    -- 2. Força a transição para o estado de pulo (o que faz sair da cadeira)
-    local sucesso, erro = pcall(function()
         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end)
-
-    if not sucesso then
-        warn("[jumpindex] Falha ao mudar de estado: " .. tostring(erro))
-    end
 end
 
 botao.MouseButton1Click:Connect(pular)
 botao.TouchTap:Connect(pular)
 
--- A tecla de espaço também aciona a função de pular
 UserInputService.InputBegan:Connect(function(input, processado)
     if processado then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -145,4 +221,26 @@ UserInputService.InputBegan:Connect(function(input, processado)
     end
 end)
 
-print("[jumpindex] Botão de pular carregado! (Pulo nativo corrigido)")
+------------------------------------------------------------
+-- LOOP DO INFINITE JUMP (só roda quando ativado)
+------------------------------------------------------------
+RunService.RenderStepped:Connect(function()
+    if not infiniteJumpAtivado then return end
+
+    local character = player.Character
+    if not character then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    pcall(function()
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end)
+end)
+
+------------------------------------------------------------
+-- INICIALIZAR
+------------------------------------------------------------
+atualizarVisualToggle()
+print("[jumpindex] Botão de pular carregado!")
