@@ -1,29 +1,34 @@
 --[[
-    jumpindex_roblox.lua
-    Versão para Roblox (executor / loadstring)
-    Botão de pular no canto superior direito
+    jumpindex.lua
+    Botão de pular - Roblox Executor
+    Canto superior direito, azul, seta ⬆
+    Cada clique = 1 pulo.
 --]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Evita duplicar se já existir
-if playerGui:FindFirstChild("BotaoPularGui") then
-    playerGui.BotaoPularGui:Destroy()
-end
+-- Remove GUI antiga (evita duplicar ao reexecutar)
+local antiga = playerGui:FindFirstChild("BotaoPularGui")
+if antiga then antiga:Destroy() end
 
--- ScreenGui
+------------------------------------------------------------
+-- SCREEN GUI
+------------------------------------------------------------
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
--- Container circular
+------------------------------------------------------------
+-- BOTÃO (canto superior direito)
+------------------------------------------------------------
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 70, 0, 70)
@@ -50,7 +55,6 @@ gradient.Color = ColorSequence.new({
 gradient.Rotation = 90
 gradient.Parent = container
 
--- Botão
 local botao = Instance.new("TextButton")
 botao.Name = "BtnPular"
 botao.Size = UDim2.new(1, 0, 1, 0)
@@ -60,22 +64,66 @@ botao.TextColor3 = Color3.fromRGB(255, 255, 255)
 botao.TextScaled = true
 botao.Font = Enum.Font.GothamBold
 botao.AutoButtonColor = false
+botao.Active = true
 botao.Parent = container
 
 local textSize = Instance.new("UITextSizeConstraint")
 textSize.MaxTextSize = 42
 textSize.Parent = botao
 
--- Função de pulo (Roblox)
+------------------------------------------------------------
+-- ANIMAÇÕES
+------------------------------------------------------------
+local function tweenSize(novoTamanho)
+    TweenService:Create(container, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+        Size = novoTamanho
+    }):Play()
+end
+
+local function tweenPosition(novaPosicao)
+    TweenService:Create(container, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+        Position = novaPosicao
+    }):Play()
+end
+
+botao.MouseEnter:Connect(function()
+    tweenSize(UDim2.new(0, 80, 0, 80))
+    tweenPosition(UDim2.new(1, -100, 0, 15))
+end)
+
+botao.MouseLeave:Connect(function()
+    tweenSize(UDim2.new(0, 70, 0, 70))
+    tweenPosition(UDim2.new(1, -90, 0, 20))
+end)
+
+botao.MouseButton1Down:Connect(function()
+    tweenSize(UDim2.new(0, 60, 0, 60))
+    tweenPosition(UDim2.new(1, -80, 0, 25))
+end)
+
+botao.MouseButton1Up:Connect(function()
+    tweenSize(UDim2.new(0, 80, 0, 80))
+    tweenPosition(UDim2.new(1, -100, 0, 15))
+end)
+
+------------------------------------------------------------
+-- FUNÇÃO DE PULO
+------------------------------------------------------------
 local function pular()
     local character = player.Character
     if not character then return end
+
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    humanoid.UseJumpPower = true
-    humanoid.JumpPower = 50 -- força padrão
-
     local estado = humanoid:GetState()
     if estado ~= Enum.HumanoidStateType.Jumping
-    and estado ~= Enum.H
+    and estado ~= Enum.HumanoidStateType.Freefall then
+        humanoid.Jump = true
+    end
+end
+
+botao.MouseButton1Click:Connect(pular)
+botao.TouchTap:Connect(pular)
+
+print("[jumpindex] Botão de pular carregado!")
