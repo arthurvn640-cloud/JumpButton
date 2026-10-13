@@ -1,9 +1,9 @@
 --[[
     jumpindex.lua
     Botão de pular para EXECUTORES DE ROBLOX.
-    - Botão principal ⬆ (canto superior direito)
-    - Botão de ativar/desativar Infinite Jump (embaixo do principal)
-    - Sem pulo duplo ao clicar
+    - Botão principal ⬆
+    - Botão de Infinite Jump embaixo
+    - Sem pulo duplo
 --]]
 
 local Players = game:GetService("Players")
@@ -25,7 +25,18 @@ screenGui.Name = "BotaoPularGui"
 screenGui.ResetOnSpawn = false
 screenGui.IgnoreGuiInset = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.DisplayOrder = 999
 screenGui.Parent = playerGui
+
+------------------------------------------------------------
+-- FRAME PAI (guarda os dois botões juntos)
+------------------------------------------------------------
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 60, 0, 90)
+mainFrame.Position = UDim2.new(1, -80, 0, 20)
+mainFrame.BackgroundTransparency = 1
+mainFrame.Parent = screenGui
 
 ------------------------------------------------------------
 -- BOTÃO PRINCIPAL ⬆
@@ -33,10 +44,10 @@ screenGui.Parent = playerGui
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 50, 0, 50)
-container.Position = UDim2.new(1, -70, 0, 20)
+container.Position = UDim2.new(0, 5, 0, 0)
 container.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
 container.BorderSizePixel = 0
-container.Parent = screenGui
+container.Parent = mainFrame
 
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(1, 0)
@@ -78,10 +89,10 @@ textSize.Parent = botao
 local toggleContainer = Instance.new("Frame")
 toggleContainer.Name = "ContainerToggle"
 toggleContainer.Size = UDim2.new(0, 50, 0, 22)
-toggleContainer.Position = UDim2.new(1, -70, 0, 78)
+toggleContainer.Position = UDim2.new(0, 5, 0, 60)
 toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
 toggleContainer.BorderSizePixel = 0
-toggleContainer.Parent = screenGui
+toggleContainer.Parent = mainFrame
 
 local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(0, 6)
@@ -109,7 +120,7 @@ toggleTextSize.MaxTextSize = 13
 toggleTextSize.Parent = toggleBtn
 
 ------------------------------------------------------------
--- ANIMAÇÕES DO BOTÃO PRINCIPAL
+-- ANIMAÇÕES
 ------------------------------------------------------------
 local tweenAtual = nil
 
@@ -126,19 +137,19 @@ local function animar(tamanho, posicao)
 end
 
 botao.MouseEnter:Connect(function()
-    animar(UDim2.new(0, 58, 0, 58), UDim2.new(1, -74, 0, 16))
+    animar(UDim2.new(0, 58, 0, 58), UDim2.new(0, 1, 0, -4))
 end)
 
 botao.MouseLeave:Connect(function()
-    animar(UDim2.new(0, 50, 0, 50), UDim2.new(1, -70, 0, 20))
+    animar(UDim2.new(0, 50, 0, 50), UDim2.new(0, 5, 0, 0))
 end)
 
 botao.MouseButton1Down:Connect(function()
-    animar(UDim2.new(0, 44, 0, 44), UDim2.new(1, -67, 0, 23))
+    animar(UDim2.new(0, 44, 0, 44), UDim2.new(0, 8, 0, 3))
 end)
 
 botao.MouseButton1Up:Connect(function()
-    animar(UDim2.new(0, 58, 0, 58), UDim2.new(1, -74, 0, 16))
+    animar(UDim2.new(0, 58, 0, 58), UDim2.new(0, 1, 0, -4))
 end)
 
 ------------------------------------------------------------
@@ -179,13 +190,14 @@ toggleBtn.MouseLeave:Connect(function()
 end)
 
 ------------------------------------------------------------
--- FUNÇÃO DE PULO (sem pulo duplo)
+-- FUNÇÃO DE PULO
 ------------------------------------------------------------
 local ultimoPulo = 0
 
 local function pular()
     local agora = tick()
-    if agora - ultimoPulo < 0.1 then return end
+    -- Cooldown de 0.25s (impede duplo pulo mesmo se clicar logo após pular normal)
+    if agora - ultimoPulo < 0.25 then return end
 
     local character = player.Character
     if not character then return end
@@ -193,14 +205,14 @@ local function pular()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    -- Não pula se já estiver pulando ou caindo (evita pulo duplo)
+    -- Bloqueia se já estiver pulando ou caindo
     local estado = humanoid:GetState()
     if estado == Enum.HumanoidStateType.Jumping 
        or estado == Enum.HumanoidStateType.Freefall then
         return
     end
 
-    -- Não pula se estiver no ar
+    -- Bloqueia se estiver no ar
     if humanoid.FloorMaterial == Enum.Material.Air then return end
 
     ultimoPulo = agora
@@ -214,15 +226,8 @@ end
 botao.MouseButton1Click:Connect(pular)
 botao.TouchTap:Connect(pular)
 
-UserInputService.InputBegan:Connect(function(input, processado)
-    if processado then return end
-    if input.KeyCode == Enum.KeyCode.Space then
-        pular()
-    end
-end)
-
 ------------------------------------------------------------
--- LOOP DO INFINITE JUMP (só roda quando ativado)
+-- LOOP DO INFINITE JUMP (só quando ativado)
 ------------------------------------------------------------
 RunService.RenderStepped:Connect(function()
     if not infiniteJumpAtivado then return end
@@ -243,4 +248,4 @@ end)
 -- INICIALIZAR
 ------------------------------------------------------------
 atualizarVisualToggle()
-print("[jumpindex] Botão de pular carregado!")
+print("[jumpindex] Carregado! Toggle visível? " .. tostring(toggleContainer.Visible))
