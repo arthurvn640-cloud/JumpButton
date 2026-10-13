@@ -1,7 +1,7 @@
 --[[
     jumpindex.lua
     Botão de pular - Roblox Executor
-    Aplica velocidade direta (funciona mesmo quando Jump é ignorado).
+    Tamanho reduzido (50px)
 --]]
 
 local Players = game:GetService("Players")
@@ -25,12 +25,12 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
 ------------------------------------------------------------
--- BOTÃO
+-- BOTÃO (canto superior direito — menor)
 ------------------------------------------------------------
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
-container.Size = UDim2.new(0, 70, 0, 70)
-container.Position = UDim2.new(1, -90, 0, 20)
+container.Size = UDim2.new(0, 50, 0, 50)
+container.Position = UDim2.new(1, -70, 0, 20)
 container.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
 container.BorderSizePixel = 0
 container.Parent = screenGui
@@ -66,7 +66,7 @@ botao.Active = true
 botao.Parent = container
 
 local textSize = Instance.new("UITextSizeConstraint")
-textSize.MaxTextSize = 42
+textSize.MaxTextSize = 30
 textSize.Parent = botao
 
 ------------------------------------------------------------
@@ -85,74 +85,52 @@ local function tweenPosition(novaPosicao)
 end
 
 botao.MouseEnter:Connect(function()
-    tweenSize(UDim2.new(0, 80, 0, 80))
-    tweenPosition(UDim2.new(1, -100, 0, 15))
+    tweenSize(UDim2.new(0, 58, 0, 58))
+    tweenPosition(UDim2.new(1, -74, 0, 16))
 end)
 
 botao.MouseLeave:Connect(function()
-    tweenSize(UDim2.new(0, 70, 0, 70))
-    tweenPosition(UDim2.new(1, -90, 0, 20))
+    tweenSize(UDim2.new(0, 50, 0, 50))
+    tweenPosition(UDim2.new(1, -70, 0, 20))
 end)
 
 botao.MouseButton1Down:Connect(function()
-    tweenSize(UDim2.new(0, 60, 0, 60))
-    tweenPosition(UDim2.new(1, -80, 0, 25))
+    tweenSize(UDim2.new(0, 44, 0, 44))
+    tweenPosition(UDim2.new(1, -67, 0, 23))
 end)
 
 botao.MouseButton1Up:Connect(function()
-    tweenSize(UDim2.new(0, 80, 0, 80))
-    tweenPosition(UDim2.new(1, -100, 0, 15))
+    tweenSize(UDim2.new(0, 58, 0, 58))
+    tweenPosition(UDim2.new(1, -74, 0, 16))
 end)
 
 ------------------------------------------------------------
--- FUNÇÃO DE PULO — VERSÃO REFORÇADA
+-- FUNÇÃO DE PULO
 ------------------------------------------------------------
-local FORCA_PULO = 50 -- valor padrão do Roblox
+local FORCA_PULO = 50
 
 local function pular()
     local character = player.Character
-    if not character then
-        print("[jumpindex] Sem personagem")
-        return
-    end
+    if not character then return end
 
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     local hrp = character:FindFirstChild("HumanoidRootPart")
 
-    if not humanoid or not hrp then
-        print("[jumpindex] Sem humanoid ou HumanoidRootPart")
-        return
-    end
+    if not humanoid or not hrp then return end
+    if humanoid.FloorMaterial == Enum.Material.Air then return end
 
-    -- Verifica se está no chão
-    if humanoid.FloorMaterial == Enum.Material.Air then
-        print("[jumpindex] Está no ar, não pode pular")
-        return
-    end
-
-    -- Método 1: propriedade padrão
     humanoid.Jump = true
-
-    -- Método 2: força o estado
     pcall(function()
         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end)
 
-    -- Método 3: aplica velocidade direta (mais confiável)
-    local velocidadeAtual = hrp.AssemblyLinearVelocity
-    hrp.AssemblyLinearVelocity = Vector3.new(
-        velocidadeAtual.X,
-        FORCA_PULO,
-        velocidadeAtual.Z
-    )
-
-    print("[jumpindex] Pulo aplicado!")
+    local vel = hrp.AssemblyLinearVelocity
+    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, FORCA_PULO, vel.Z)
 end
 
 botao.MouseButton1Click:Connect(pular)
 botao.TouchTap:Connect(pular)
 
--- Espaço também pula
 UserInputService.InputBegan:Connect(function(input, processado)
     if processado then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -160,4 +138,4 @@ UserInputService.InputBegan:Connect(function(input, processado)
     end
 end)
 
-print("[jumpindex] Botão de pular carregado!")
+print("[jumpindex] Botão de pular carregado! (50px)")
