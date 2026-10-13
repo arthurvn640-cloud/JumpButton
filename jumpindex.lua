@@ -1,7 +1,7 @@
 --[[
     jumpindex.lua
     Botão de pular para EXECUTORES DE ROBLOX.
-    Cada clique = 1 pulo. Sem travar em cliques rápidos.
+    Versão final: pulo nativo, sai de cadeiras e não trava.
 --]]
 
 local Players = game:GetService("Players")
@@ -11,9 +11,13 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- Remove a GUI antiga se ela já existir
 local antiga = playerGui:FindFirstChild("BotaoPularGui")
 if antiga then antiga:Destroy() end
 
+------------------------------------------------------------
+-- INTERFACE GRÁFICA (GUI)
+------------------------------------------------------------
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
 screenGui.ResetOnSpawn = false
@@ -21,6 +25,7 @@ screenGui.IgnoreGuiInset = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
+-- Botão (Canto Superior Direito)
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 50, 0, 50)
@@ -63,9 +68,9 @@ local textSize = Instance.new("UITextSizeConstraint")
 textSize.MaxTextSize = 30
 textSize.Parent = botao
 
--- ============================================================
--- ANIMAÇÕES (cancela tween anterior antes de criar outro)
--- ============================================================
+------------------------------------------------------------
+-- ANIMAÇÕES DO BOTÃO
+------------------------------------------------------------
 local tweenAtual = nil
 
 local function animar(tamanho, posicao)
@@ -97,35 +102,42 @@ botao.MouseButton1Up:Connect(function()
     animar(UDim2.new(0, 58, 0, 58), UDim2.new(1, -74, 0, 16))
 end)
 
--- ============================================================
--- PULO (sem pcall, sem verificação pesada, sem delay)
--- ============================================================
-local FORCA_PULO = 50
+------------------------------------------------------------
+-- FUNÇÃO DE PULO (VERSÃO CORRIGIDA)
+------------------------------------------------------------
 local ultimoPulo = 0
 
 local function pular()
-    -- Cooldown baseado em tempo (mais preciso que booleano)
+    -- Cooldown para evitar sobrecarga em cliques rápidos
     local agora = tick()
-    if agora - ultimoPulo < 0.08 then return end
+    if agora - ultimoPulo < 0.1 then return end
     ultimoPulo = agora
 
     local character = player.Character
     if not character then return end
 
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
     local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid and humanoid.FloorMaterial == Enum.Material.Air then return end
+    if not humanoid then return end
 
-    -- Aplica pulo direto via velocidade (mais rápido que ChangeState)
-    local vel = hrp.AssemblyLinearVelocity
-    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, FORCA_PULO, vel.Z)
+    -- 1. Garante que o estado de pulo está habilitado
+    pcall(function()
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+    end)
+
+    -- 2. Força a transição para o estado de pulo (o que faz sair da cadeira)
+    local sucesso, erro = pcall(function()
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end)
+
+    if not sucesso then
+        warn("[jumpindex] Falha ao mudar de estado: " .. tostring(erro))
+    end
 end
 
 botao.MouseButton1Click:Connect(pular)
 botao.TouchTap:Connect(pular)
 
+-- A tecla de espaço também aciona a função de pular
 UserInputService.InputBegan:Connect(function(input, processado)
     if processado then return end
     if input.KeyCode == Enum.KeyCode.Space then
@@ -133,4 +145,4 @@ UserInputService.InputBegan:Connect(function(input, processado)
     end
 end)
 
-print("[jumpindex] Botão de pular carregado!")
+print("[jumpindex] Botão de pular carregado! (Pulo nativo corrigido)")
