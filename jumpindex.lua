@@ -1,14 +1,13 @@
 --[[
     jumpindex.lua
-    - ∞ OFF: clicar ⬆ = 1 pulo normal (igual Roblox, sai de cadeira)
+    - ∞ OFF: clicar ⬆ = 1 pulo normal (sai de cadeira/carro)
     - ∞ ON: SEGURAR ⬆ = pula infinitamente / soltar = para
-    - Botão ⬆ pisca em azul claro ao clicar (sem mudar de tamanho)
-    - Toggle ∞ sem animação
+    - Botão ⬆ pisca azul claro ao clicar (bem visível)
 --]]
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -107,24 +106,20 @@ toggleTextSize.MaxTextSize = 13
 toggleTextSize.Parent = toggleBtn
 
 ------------------------------------------------------------
--- ESTADOS
+-- CORES
 ------------------------------------------------------------
-local infiniteArmado = false
-local segurando      = false
-local loopRodando    = false
-local piscando       = false
-
-------------------------------------------------------------
--- VISUAIS
-------------------------------------------------------------
-local COR_AZUL_NORMAL = Color3.fromRGB(50, 130, 255)
-local COR_AZUL_CLARO  = Color3.fromRGB(150, 200, 255)
-local COR_VERDE_ARM   = Color3.fromRGB(40, 110, 70)
-local COR_VERDE_ATIVO = Color3.fromRGB(80, 220, 120)
+local COR_AZUL_NORMAL   = Color3.fromRGB(50, 130, 255)
+local COR_AZUL_CLARO    = Color3.fromRGB(200, 230, 255)  -- bem claro, quase branco
+local COR_VERDE_ARM     = Color3.fromRGB(40, 110, 70)
+local COR_VERDE_ATIVO   = Color3.fromRGB(80, 220, 120)
 
 local GRAD_NORMAL = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
     ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
+})
+local GRAD_CLARO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 230, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 230, 255))
 })
 local GRAD_ARM = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 100)),
@@ -135,6 +130,17 @@ local GRAD_ATIVO = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 140, 60))
 })
 
+------------------------------------------------------------
+-- ESTADOS
+------------------------------------------------------------
+local infiniteArmado = false
+local segurando      = false
+local loopRodando    = false
+local piscando       = false
+
+------------------------------------------------------------
+-- VISUAIS
+------------------------------------------------------------
 local function atualizarToggle()
     if infiniteArmado then
         toggleBtn.Text = "∞ ON"
@@ -148,7 +154,7 @@ local function atualizarToggle()
 end
 
 local function atualizarVisualBotao()
-    if piscando then return end -- não mexe se estiver piscando
+    if piscando then return end
 
     if segurando then
         container.BackgroundColor3 = COR_VERDE_ATIVO
@@ -163,27 +169,29 @@ local function atualizarVisualBotao()
 end
 
 ------------------------------------------------------------
--- FLASH AZUL CLARO
+-- PISCA AZUL CLARO (bem visível, 0.2s)
 ------------------------------------------------------------
 local function piscarAzulClaro()
     piscando = true
     container.BackgroundColor3 = COR_AZUL_CLARO
-    gradient.Color = ColorSequence.new(COR_AZUL_CLARO)
+    gradient.Color = GRAD_CLARO
 
-    task.delay(0.1, function()
+    task.spawn(function()
+        task.wait(0.2)
         piscando = false
         atualizarVisualBotao()
     end)
 end
 
 ------------------------------------------------------------
--- PULO NORMAL (igual Roblox — sai de cadeira)
+-- PULO NORMAL (SAI DE CADEIRA / CARRO)
 ------------------------------------------------------------
 local ultimoPulo = 0
 
 local function pularNormal()
     local agora = tick()
     if agora - ultimoPulo < 0.25 then return end
+    ultimoPulo = agora
 
     local character = player.Character
     if not character then return end
@@ -191,25 +199,43 @@ local function pularNormal()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    ultimoPulo = agora
-
-    pcall(function()
-        if humanoid.Sit then
+    -- Se está sentado (cadeira, carro, banco), primeiro levanta e depois pula
+    if humanoid.Sit then
+        pcall(function()
             humanoid.Sit = false
-        end
-    end)
+        end)
 
-    pcall(function()
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-    end)
+        -- Espera um frame pro Roblox quebrar o Weld do assento
+        task.spawn(function()
+            task.wait(0.05)
 
-    pcall(function()
-        humanoid.Jump = true
-    end)
+            local char = player.Character
+            if not char then return end
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if not hum then return end
 
-    pcall(function()
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end)
+            pcall(function()
+                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            end)
+            pcall(function()
+                hum.Jump = true
+            end)
+            pcall(function()
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end)
+        end)
+    else
+        -- Pulo normal (não está sentado)
+        pcall(function()
+            humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        end)
+        pcall(function()
+            humanoid.Jump = true
+        end)
+        pcall(function()
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end)
+    end
 end
 
 ------------------------------------------------------------
@@ -226,6 +252,11 @@ local function loopInfinite()
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid then
                     pcall(function()
+                        if humanoid.Sit then
+                            humanoid.Sit = false
+                        end
+                    end)
+                    pcall(function()
                         humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
                         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                     end)
@@ -238,7 +269,7 @@ local function loopInfinite()
 end
 
 ------------------------------------------------------------
--- TOGGLE (sem animação)
+-- TOGGLE
 ------------------------------------------------------------
 toggleBtn.MouseButton1Click:Connect(function()
     infiniteArmado = not infiniteArmado
