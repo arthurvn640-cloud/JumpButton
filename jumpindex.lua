@@ -1,8 +1,7 @@
 --[[
     jumpindex.lua
     Botão de pular - Roblox Executor
-    Canto superior direito, azul, seta ⬆
-    Cada clique = 1 pulo.
+    Aplica velocidade direta (funciona mesmo quando Jump é ignorado).
 --]]
 
 local Players = game:GetService("Players")
@@ -12,7 +11,6 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Remove GUI antiga (evita duplicar ao reexecutar)
 local antiga = playerGui:FindFirstChild("BotaoPularGui")
 if antiga then antiga:Destroy() end
 
@@ -27,7 +25,7 @@ screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
 ------------------------------------------------------------
--- BOTÃO (canto superior direito)
+-- BOTÃO
 ------------------------------------------------------------
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
@@ -107,23 +105,59 @@ botao.MouseButton1Up:Connect(function()
 end)
 
 ------------------------------------------------------------
--- FUNÇÃO DE PULO
+-- FUNÇÃO DE PULO — VERSÃO REFORÇADA
 ------------------------------------------------------------
+local FORCA_PULO = 50 -- valor padrão do Roblox
+
 local function pular()
     local character = player.Character
-    if not character then return end
+    if not character then
+        print("[jumpindex] Sem personagem")
+        return
+    end
 
     local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
 
-    local estado = humanoid:GetState()
-    if estado ~= Enum.HumanoidStateType.Jumping
-    and estado ~= Enum.HumanoidStateType.Freefall then
-        humanoid.Jump = true
+    if not humanoid or not hrp then
+        print("[jumpindex] Sem humanoid ou HumanoidRootPart")
+        return
     end
+
+    -- Verifica se está no chão
+    if humanoid.FloorMaterial == Enum.Material.Air then
+        print("[jumpindex] Está no ar, não pode pular")
+        return
+    end
+
+    -- Método 1: propriedade padrão
+    humanoid.Jump = true
+
+    -- Método 2: força o estado
+    pcall(function()
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end)
+
+    -- Método 3: aplica velocidade direta (mais confiável)
+    local velocidadeAtual = hrp.AssemblyLinearVelocity
+    hrp.AssemblyLinearVelocity = Vector3.new(
+        velocidadeAtual.X,
+        FORCA_PULO,
+        velocidadeAtual.Z
+    )
+
+    print("[jumpindex] Pulo aplicado!")
 end
 
 botao.MouseButton1Click:Connect(pular)
 botao.TouchTap:Connect(pular)
+
+-- Espaço também pula
+UserInputService.InputBegan:Connect(function(input, processado)
+    if processado then return end
+    if input.KeyCode == Enum.KeyCode.Space then
+        pular()
+    end
+end)
 
 print("[jumpindex] Botão de pular carregado!")
