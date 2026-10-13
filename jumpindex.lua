@@ -1,7 +1,7 @@
 --[[
     jumpindex.lua
-    Botão de pular - Roblox Executor
-    Tamanho reduzido (50px)
+    Botão de pular para EXECUTORES DE ROBLOX.
+    Cada clique = 1 pulo. Sem travar em cliques rápidos.
 --]]
 
 local Players = game:GetService("Players")
@@ -14,9 +14,6 @@ local playerGui = player:WaitForChild("PlayerGui")
 local antiga = playerGui:FindFirstChild("BotaoPularGui")
 if antiga then antiga:Destroy() end
 
-------------------------------------------------------------
--- SCREEN GUI
-------------------------------------------------------------
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
 screenGui.ResetOnSpawn = false
@@ -24,9 +21,6 @@ screenGui.IgnoreGuiInset = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.Parent = playerGui
 
-------------------------------------------------------------
--- BOTÃO (canto superior direito — menor)
-------------------------------------------------------------
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 50, 0, 50)
@@ -69,61 +63,62 @@ local textSize = Instance.new("UITextSizeConstraint")
 textSize.MaxTextSize = 30
 textSize.Parent = botao
 
-------------------------------------------------------------
--- ANIMAÇÕES
-------------------------------------------------------------
-local function tweenSize(novoTamanho)
-    TweenService:Create(container, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-        Size = novoTamanho
-    }):Play()
-end
+-- ============================================================
+-- ANIMAÇÕES (cancela tween anterior antes de criar outro)
+-- ============================================================
+local tweenAtual = nil
 
-local function tweenPosition(novaPosicao)
-    TweenService:Create(container, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-        Position = novaPosicao
-    }):Play()
+local function animar(tamanho, posicao)
+    if tweenAtual then
+        tweenAtual:Cancel()
+        tweenAtual = nil
+    end
+
+    tweenAtual = TweenService:Create(container, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
+        Size = tamanho,
+        Position = posicao
+    })
+    tweenAtual:Play()
 end
 
 botao.MouseEnter:Connect(function()
-    tweenSize(UDim2.new(0, 58, 0, 58))
-    tweenPosition(UDim2.new(1, -74, 0, 16))
+    animar(UDim2.new(0, 58, 0, 58), UDim2.new(1, -74, 0, 16))
 end)
 
 botao.MouseLeave:Connect(function()
-    tweenSize(UDim2.new(0, 50, 0, 50))
-    tweenPosition(UDim2.new(1, -70, 0, 20))
+    animar(UDim2.new(0, 50, 0, 50), UDim2.new(1, -70, 0, 20))
 end)
 
 botao.MouseButton1Down:Connect(function()
-    tweenSize(UDim2.new(0, 44, 0, 44))
-    tweenPosition(UDim2.new(1, -67, 0, 23))
+    animar(UDim2.new(0, 44, 0, 44), UDim2.new(1, -67, 0, 23))
 end)
 
 botao.MouseButton1Up:Connect(function()
-    tweenSize(UDim2.new(0, 58, 0, 58))
-    tweenPosition(UDim2.new(1, -74, 0, 16))
+    animar(UDim2.new(0, 58, 0, 58), UDim2.new(1, -74, 0, 16))
 end)
 
-------------------------------------------------------------
--- FUNÇÃO DE PULO
-------------------------------------------------------------
+-- ============================================================
+-- PULO (sem pcall, sem verificação pesada, sem delay)
+-- ============================================================
 local FORCA_PULO = 50
+local ultimoPulo = 0
 
 local function pular()
+    -- Cooldown baseado em tempo (mais preciso que booleano)
+    local agora = tick()
+    if agora - ultimoPulo < 0.08 then return end
+    ultimoPulo = agora
+
     local character = player.Character
     if not character then return end
 
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
     local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
 
-    if not humanoid or not hrp then return end
-    if humanoid.FloorMaterial == Enum.Material.Air then return end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.FloorMaterial == Enum.Material.Air then return end
 
-    humanoid.Jump = true
-    pcall(function()
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end)
-
+    -- Aplica pulo direto via velocidade (mais rápido que ChangeState)
     local vel = hrp.AssemblyLinearVelocity
     hrp.AssemblyLinearVelocity = Vector3.new(vel.X, FORCA_PULO, vel.Z)
 end
@@ -138,4 +133,4 @@ UserInputService.InputBegan:Connect(function(input, processado)
     end
 end)
 
-print("[jumpindex] Botão de pular carregado! (50px)")
+print("[jumpindex] Botão de pular carregado!")
