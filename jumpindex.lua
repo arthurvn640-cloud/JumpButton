@@ -1,9 +1,9 @@
 --[[
     jumpindex.lua
-    - ∞ OFF: clicar ⬆ = 1 pulo normal (sai de cadeira/carro)
+    - ∞ OFF: clicar ⬆ = 1 pulo normal (ChangeState + velocidade, sai de cadeira/carro)
     - ∞ ON: SEGURAR ⬆ = pula infinitamente / soltar = para
     - Botão ⬆ pisca azul claro ao clicar no OFF
-    - Sem spam de pulo no OFF
+    - Anti-spam: ignora clique se não estiver no chão
 --]]
 
 local Players = game:GetService("Players")
@@ -137,6 +137,7 @@ local infiniteArmado = false
 local segurando      = false
 local loopRodando    = false
 local piscando       = false
+local FORCA_PULO     = 50
 
 ------------------------------------------------------------
 -- VISUAIS
@@ -177,18 +178,15 @@ local function piscarAzulClaro()
     gradient.Color = GRAD_CLARO
 
     task.spawn(function()
-        task.wait(0.2)
+        task.wait(0.15)
         piscando = false
         atualizarVisualBotao()
     end)
 end
 
 ------------------------------------------------------------
--- PULO NORMAL — COM ANTI-SPAM
+-- CHECA SE ESTÁ NO CHÃO
 ------------------------------------------------------------
-local ultimoPulo = 0
-local COOLDOWN = 0.6 -- aumentado: 0.6s entre cada pulo
-
 local function estaNoChao(humanoid)
     local estado = humanoid:GetState()
     if estado == Enum.HumanoidStateType.Jumping
@@ -201,6 +199,32 @@ local function estaNoChao(humanoid)
     return true
 end
 
+------------------------------------------------------------
+-- APLICA PULO (ChangeState + velocidade)
+------------------------------------------------------------
+local function aplicarPulo()
+    local character = player.Character
+    if not character then return end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not hrp then return end
+
+    pcall(function()
+        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end)
+
+    local vel = hrp.AssemblyLinearVelocity
+    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, FORCA_PULO, vel.Z)
+end
+
+------------------------------------------------------------
+-- PULO NORMAL (com debounce real)
+------------------------------------------------------------
+local ultimoPulo = 0
+local COOLDOWN = 0.35
+
 local function pularNormal()
     local agora = tick()
     if agora - ultimoPulo < COOLDOWN then return end
@@ -211,46 +235,30 @@ local function pularNormal()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
 
-    -- Se estiver sentado, levanta e pula
+    -- Se está sentado (cadeira/carro), levanta e pula depois
     if humanoid.Sit then
         ultimoPulo = agora
         pcall(function()
             humanoid.Sit = false
         end)
-
         task.spawn(function()
-            task.wait(0.05)
+            task.wait(0.08)
             local char = player.Character
             if not char then return end
             local hum = char:FindFirstChildOfClass("Humanoid")
             if not hum then return end
-            pcall(function()
-                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            end)
-            pcall(function()
-                hum.Jump = true
-            end)
-            pcall(function()
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end)
+            if estaNoChao(hum) then
+                aplicarPulo()
+            end
         end)
         return
     end
 
-    -- Se NÃO está no chão, ignora o clique
+    -- Só pula se estiver no chão (evita spam e voo no OFF)
     if not estaNoChao(humanoid) then return end
 
     ultimoPulo = agora
-
-    pcall(function()
-        humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-    end)
-    pcall(function()
-        humanoid.Jump = true
-    end)
-    pcall(function()
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    end)
+    aplicarPulo()
 end
 
 ------------------------------------------------------------
@@ -265,7 +273,8 @@ local function loopInfinite()
             local character = player.Character
             if character then
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                if humanoid and hrp then
                     pcall(function()
                         if humanoid.Sit then
                             humanoid.Sit = false
@@ -275,6 +284,8 @@ local function loopInfinite()
                         humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
                         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                     end)
+                    local vel = hrp.AssemblyLinearVelocity
+                    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, FORCA_PULO, vel.Z)
                 end
             end
             task.wait(0.05)
