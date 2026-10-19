@@ -4,7 +4,8 @@
     - ∞ ON: SEGURAR ⬆ = pula infinitamente / soltar = para
     - Botão ⬆ pisca azul claro ao clicar no OFF
     - Anti-spam: ignora clique se não estiver no chão
-    - NOVO: animação de carregamento com 6 etapas + textos PT/EN
+    - Intro com 6 etapas + textos PT/EN
+    - Tela preta PERMANECE até o load ficar 100% pronto
 --]]
 
 local Players = game:GetService("Players")
@@ -14,14 +15,13 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Limpa GUIs antigas
 local antiga = playerGui:FindFirstChild("BotaoPularGui")
 if antiga then antiga:Destroy() end
 local antigaIntro = playerGui:FindFirstChild("JumpIndexIntro")
 if antigaIntro then antigaIntro:Destroy() end
 
 ------------------------------------------------------------
--- SCREEN GUI PRINCIPAL (criado primeiro, por baixo)
+-- SCREEN GUI PRINCIPAL
 ------------------------------------------------------------
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
@@ -37,7 +37,6 @@ mainFrame.Position = UDim2.new(1, -80, 0, 20)
 mainFrame.BackgroundTransparency = 1
 mainFrame.Parent = screenGui
 
--- BOTÃO ⬆
 local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 50, 0, 50)
@@ -74,7 +73,6 @@ local textSize = Instance.new("UITextSizeConstraint")
 textSize.MaxTextSize = 30
 textSize.Parent = botao
 
--- TOGGLE ∞
 local toggleContainer = Instance.new("Frame")
 toggleContainer.Name = "ContainerToggle"
 toggleContainer.Size = UDim2.new(0, 50, 0, 22)
@@ -135,7 +133,7 @@ local piscando       = false
 local FORCA_PULO     = 50
 
 ------------------------------------------------------------
--- VISUAIS / FUNÇÕES DO BOTÃO
+-- FUNÇÕES DO BOTÃO
 ------------------------------------------------------------
 local function atualizarToggle()
     if infiniteArmado then
@@ -300,7 +298,7 @@ atualizarToggle()
 atualizarVisualBotao()
 
 ------------------------------------------------------------
--- INTRO (por cima, escondendo o botão)
+-- INTRO
 ------------------------------------------------------------
 local introGui = Instance.new("ScreenGui")
 introGui.Name = "JumpIndexIntro"
@@ -309,7 +307,7 @@ introGui.IgnoreGuiInset = true
 introGui.DisplayOrder = 9999
 introGui.Parent = playerGui
 
--- Tela preta inicial
+-- Tela preta (fica opaca até o load terminar)
 local telaPreta = Instance.new("Frame")
 telaPreta.Size = UDim2.new(1, 0, 1, 0)
 telaPreta.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -317,7 +315,7 @@ telaPreta.BackgroundTransparency = 0
 telaPreta.BorderSizePixel = 0
 telaPreta.Parent = introGui
 
--- Painel central com gradiente azul (diagonal: escuro no canto sup. esq. → claro no canto inf. dir.)
+-- Painel central
 local painel = Instance.new("Frame")
 painel.Size = UDim2.new(0, 400, 0, 220)
 painel.Position = UDim2.new(0.5, -200, 0.5, -110)
@@ -332,21 +330,19 @@ painelCorner.Parent = painel
 
 local painelGrad = Instance.new("UIGradient")
 painelGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 20, 55)),    -- azul bem escuro
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 55, 120)), -- azul médio
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 130, 220))   -- azul claro
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 20, 55)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 55, 120)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 130, 220))
 })
 painelGrad.Rotation = 45
 painelGrad.Parent = painel
 
--- Borda sutil do painel
 local painelStroke = Instance.new("UIStroke")
 painelStroke.Color = Color3.fromRGB(80, 130, 220)
 painelStroke.Thickness = 1.5
 painelStroke.Transparency = 1
 painelStroke.Parent = painel
 
--- Logo
 local introLogo = Instance.new("TextLabel")
 introLogo.Size = UDim2.new(1, 0, 0, 40)
 introLogo.Position = UDim2.new(0, 0, 0, 20)
@@ -362,7 +358,6 @@ local logoSize = Instance.new("UITextSizeConstraint")
 logoSize.MaxTextSize = 26
 logoSize.Parent = introLogo
 
--- Texto PT (etapa atual)
 local textoPT = Instance.new("TextLabel")
 textoPT.Size = UDim2.new(1, -40, 0, 22)
 textoPT.Position = UDim2.new(0, 20, 0, 80)
@@ -379,7 +374,6 @@ local ptSize = Instance.new("UITextSizeConstraint")
 ptSize.MaxTextSize = 18
 ptSize.Parent = textoPT
 
--- Texto EN (tradução)
 local textoEN = Instance.new("TextLabel")
 textoEN.Size = UDim2.new(1, -40, 0, 16)
 textoEN.Position = UDim2.new(0, 20, 0, 104)
@@ -396,7 +390,6 @@ local enSize = Instance.new("UITextSizeConstraint")
 enSize.MaxTextSize = 13
 enSize.Parent = textoEN
 
--- Barra de progresso (fundo)
 local barBg = Instance.new("Frame")
 barBg.Size = UDim2.new(0, 320, 0, 8)
 barBg.Position = UDim2.new(0.5, -160, 0, 145)
@@ -409,7 +402,6 @@ local barBgCorner = Instance.new("UICorner")
 barBgCorner.CornerRadius = UDim.new(1, 0)
 barBgCorner.Parent = barBg
 
--- Preenchimento branco
 local barFill = Instance.new("Frame")
 barFill.Size = UDim2.new(0, 0, 1, 0)
 barFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -421,7 +413,6 @@ local barFillCorner = Instance.new("UICorner")
 barFillCorner.CornerRadius = UDim.new(1, 0)
 barFillCorner.Parent = barFill
 
--- Porcentagem embaixo da barra
 local percentLabel = Instance.new("TextLabel")
 percentLabel.Size = UDim2.new(0, 320, 0, 18)
 percentLabel.Position = UDim2.new(0.5, -160, 0, 160)
@@ -441,11 +432,10 @@ pctSize.Parent = percentLabel
 -- ANIMAÇÃO DE INTRO
 ------------------------------------------------------------
 task.spawn(function()
-    -- Espera a tela preta ficar visível
+    -- Tela preta fica 100% opaca
     task.wait(0.4)
 
-    -- Transição: tela preta some, painel aparece
-    TweenService:Create(telaPreta, TweenInfo.new(0.6), {BackgroundTransparency = 1}):Play()
+    -- Painel aparece por cima da tela preta
     TweenService:Create(painel, TweenInfo.new(0.6), {BackgroundTransparency = 0}):Play()
     TweenService:Create(painelStroke, TweenInfo.new(0.6), {Transparency = 0.4}):Play()
     TweenService:Create(introLogo, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
@@ -457,51 +447,54 @@ task.spawn(function()
 
     task.wait(0.7)
 
-    -- Definição das etapas
     local etapas = {
-        {tempo = 1, pt = "Inicializando",              en = "Initializing",           fill = 1/6, pct = "17%"},
-        {tempo = 1, pt = "Criando botão",              en = "Creating button",        fill = 2/6, pct = "33%"},
-        {tempo = 1, pt = "Criando infinite jump",      en = "Creating infinite jump", fill = 3/6, pct = "50%"},
-        {tempo = 1, pt = "Conectando ao Roblox",       en = "Connecting to Roblox",   fill = 4/6, pct = "67%"},
-        {tempo = 5, pt = "Fazendo o load do código",   en = "Loading the code",       fill = 5/6, pct = "83%"},
-        {tempo = 1, pt = "Load do Jump Button completo", en = "Jump Button load complete", fill = 6/6, pct = "100%"},
+        {tempo = 1, pt = "Inicializando",                 en = "Initializing",              fill = 1/6, pct = "17%"},
+        {tempo = 1, pt = "Criando botão",                 en = "Creating button",           fill = 2/6, pct = "33%"},
+        {tempo = 1, pt = "Criando infinite jump",         en = "Creating infinite jump",    fill = 3/6, pct = "50%"},
+        {tempo = 1, pt = "Conectando ao Roblox",          en = "Connecting to Roblox",      fill = 4/6, pct = "67%"},
+        {tempo = 5, pt = "Fazendo o load do código",      en = "Loading the code",          fill = 5/6, pct = "83%"},
+        {tempo = 1, pt = "Load do Jump Button completo",  en = "Jump Button load complete", fill = 6/6, pct = "100%"},
     }
 
-    for i, etapa in ipairs(etapas) do
-        -- Atualiza os textos da etapa
+    for _, etapa in ipairs(etapas) do
         textoPT.Text = etapa.pt
         textoEN.Text = etapa.en
         percentLabel.Text = etapa.pct
 
-        -- Anima a barra
         TweenService:Create(barFill, TweenInfo.new(etapa.tempo, Enum.EasingStyle.Linear), {
             Size = UDim2.new(etapa.fill, 0, 1, 0)
         }):Play()
 
-        -- Espera o tempo da etapa
         task.wait(etapa.tempo)
 
-        -- Mostra "Completo" por 30ms
         textoPT.Text = "Completo"
         textoEN.Text = "Complete"
         task.wait(0.03)
     end
 
-    -- Fade out final
+    -- Garante que a barra chegou em 100% antes de sumir
+    barFill.Size = UDim2.new(1, 0, 1, 0)
+    percentLabel.Text = "100%"
     task.wait(0.3)
-    TweenService:Create(painel, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(painelStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
-    TweenService:Create(introLogo, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
-    TweenService:Create(textoPT, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
-    TweenService:Create(textoEN, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
-    TweenService:Create(barBg, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(barFill, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(percentLabel, TweenInfo.new(0.4), {TextTransparency = 1}):Play()
 
-    task.wait(0.55)
+    -- Só AGORA o load está pronto. Primeiro some o painel...
+    TweenService:Create(painel, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(painelStroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
+    TweenService:Create(introLogo, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    TweenService:Create(textoPT, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    TweenService:Create(textoEN, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    TweenService:Create(barBg, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(barFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(percentLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+
+    -- ...depois a tela preta some separadamente
+    task.wait(0.45)
+    TweenService:Create(telaPreta, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+
+    task.wait(0.45)
     introGui:Destroy()
 
-    print("[jumpindex] Intro finalizada. Botão pronto!")
+    print("[jumpindex] Load pronto! Tela preta removida.")
 end)
 
 print("[jumpindex] Carregado! Iniciando animação...")
