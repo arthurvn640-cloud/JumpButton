@@ -4,7 +4,7 @@
     - ∞ ON: SEGURAR ⬆ = pula infinitamente / soltar = para
     - Botão ⬆ pisca azul claro ao clicar no OFF
     - Anti-spam: ignora clique se não estiver no chão
-    - Intro com 6 etapas + textos PT/EN
+    - Intro com 6 etapas + textos PT/EN com MESMO tamanho de letra
     - Tela preta PERMANECE até o load ficar 100% pronto
 --]]
 
@@ -307,7 +307,6 @@ introGui.IgnoreGuiInset = true
 introGui.DisplayOrder = 9999
 introGui.Parent = playerGui
 
--- Tela preta (fica opaca até o load terminar)
 local telaPreta = Instance.new("Frame")
 telaPreta.Size = UDim2.new(1, 0, 1, 0)
 telaPreta.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -315,7 +314,6 @@ telaPreta.BackgroundTransparency = 0
 telaPreta.BorderSizePixel = 0
 telaPreta.Parent = introGui
 
--- Painel central
 local painel = Instance.new("Frame")
 painel.Size = UDim2.new(0, 400, 0, 220)
 painel.Position = UDim2.new(0.5, -200, 0.5, -110)
@@ -358,9 +356,13 @@ local logoSize = Instance.new("UITextSizeConstraint")
 logoSize.MaxTextSize = 26
 logoSize.Parent = introLogo
 
+-- ========== TEXTOS PT/EN COM MESMO TAMANHO ==========
+local TAMANHO_TEXTO = 15
+
+-- Texto PT
 local textoPT = Instance.new("TextLabel")
 textoPT.Size = UDim2.new(1, -40, 0, 22)
-textoPT.Position = UDim2.new(0, 20, 0, 80)
+textoPT.Position = UDim2.new(0, 20, 0, 78)
 textoPT.BackgroundTransparency = 1
 textoPT.Text = ""
 textoPT.TextColor3 = Color3.fromRGB(220, 235, 255)
@@ -371,12 +373,13 @@ textoPT.TextTransparency = 1
 textoPT.Parent = painel
 
 local ptSize = Instance.new("UITextSizeConstraint")
-ptSize.MaxTextSize = 18
+ptSize.MaxTextSize = TAMANHO_TEXTO
 ptSize.Parent = textoPT
 
+-- Texto EN (mesmo tamanho)
 local textoEN = Instance.new("TextLabel")
-textoEN.Size = UDim2.new(1, -40, 0, 16)
-textoEN.Position = UDim2.new(0, 20, 0, 104)
+textoEN.Size = UDim2.new(1, -40, 0, 22)
+textoEN.Position = UDim2.new(0, 20, 0, 101)
 textoEN.BackgroundTransparency = 1
 textoEN.Text = ""
 textoEN.TextColor3 = Color3.fromRGB(150, 180, 220)
@@ -387,8 +390,9 @@ textoEN.TextTransparency = 1
 textoEN.Parent = painel
 
 local enSize = Instance.new("UITextSizeConstraint")
-enSize.MaxTextSize = 13
+enSize.MaxTextSize = TAMANHO_TEXTO
 enSize.Parent = textoEN
+-- ====================================================
 
 local barBg = Instance.new("Frame")
 barBg.Size = UDim2.new(0, 320, 0, 8)
@@ -432,10 +436,8 @@ pctSize.Parent = percentLabel
 -- ANIMAÇÃO DE INTRO
 ------------------------------------------------------------
 task.spawn(function()
-    -- Tela preta fica 100% opaca
     task.wait(0.4)
 
-    -- Painel aparece por cima da tela preta
     TweenService:Create(painel, TweenInfo.new(0.6), {BackgroundTransparency = 0}):Play()
     TweenService:Create(painelStroke, TweenInfo.new(0.6), {Transparency = 0.4}):Play()
     TweenService:Create(introLogo, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
@@ -472,12 +474,12 @@ task.spawn(function()
         task.wait(0.03)
     end
 
-    -- Garante que a barra chegou em 100% antes de sumir
+    -- Garante que a barra chegou em 100%
     barFill.Size = UDim2.new(1, 0, 1, 0)
     percentLabel.Text = "100%"
     task.wait(0.3)
 
-    -- Só AGORA o load está pronto. Primeiro some o painel...
+    -- Painel some primeiro
     TweenService:Create(painel, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
     TweenService:Create(painelStroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
     TweenService:Create(introLogo, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
@@ -487,7 +489,7 @@ task.spawn(function()
     TweenService:Create(barFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
     TweenService:Create(percentLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
 
-    -- ...depois a tela preta some separadamente
+    -- Depois a tela preta some
     task.wait(0.45)
     TweenService:Create(telaPreta, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
 
