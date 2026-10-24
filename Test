@@ -1,37 +1,93 @@
--- VERSÃO MÍNIMA — SÓ O BOTÃO ⬆ E O TOGGLE ∞
-print("[TESTE] Iniciando...")
+--[[
+    jumpindex.lua — VERSÃO COMPLETA
+--]]
+
+print("[jumpindex] 1. Iniciando...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-print("[TESTE] PlayerGui OK")
+print("[jumpindex] 2. PlayerGui OK")
 
 local antiga = playerGui:FindFirstChild("BotaoPularGui")
 if antiga then antiga:Destroy() end
+local antigaIntro = playerGui:FindFirstChild("JumpIndexIntro")
+if antigaIntro then antigaIntro:Destroy() end
+
+print("[jumpindex] 3. GUIs antigas removidas")
+
+local FORCA_PADRAO = 50
+local forcaPulo = FORCA_PADRAO
+
+local COR_AZUL_NORMAL = Color3.fromRGB(50, 130, 255)
+local COR_AZUL_CLARO = Color3.fromRGB(200, 230, 255)
+local COR_VERDE_ARM = Color3.fromRGB(40, 110, 70)
+local COR_VERDE_ATIVO = Color3.fromRGB(80, 220, 120)
+local COR_VERMELHO = Color3.fromRGB(220, 50, 60)
+local COR_VERMELHO_CLARO = Color3.fromRGB(255, 150, 150)
+
+local GRAD_NORMAL = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
+})
+local GRAD_CLARO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 230, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 230, 255))
+})
+local GRAD_ARM = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 50))
+})
+local GRAD_ATIVO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 255, 160)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 140, 60))
+})
+local GRAD_VERMELHO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 30, 40))
+})
+local GRAD_VERMELHO_CLARO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 150)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 150))
+})
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
 screenGui.ResetOnSpawn = false
-screenGui.DisplayOrder = 999
+screenGui.IgnoreGuiInset = false
+screenGui.DisplayOrder = 900
 screenGui.Parent = playerGui
 
-print("[TESTE] ScreenGui criado")
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 60, 0, 90)
+mainFrame.Position = UDim2.new(1, -80, 0, 20)
+mainFrame.BackgroundTransparency = 1
+mainFrame.Parent = screenGui
 
 local container = Instance.new("Frame")
+container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 50, 0, 50)
-container.Position = UDim2.new(1, -70, 0, 20)
-container.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+container.Position = UDim2.new(0, 5, 0, 0)
+container.BackgroundColor3 = COR_AZUL_NORMAL
 container.BorderSizePixel = 0
-container.Parent = screenGui
+container.Parent = mainFrame
 
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(1, 0)
 corner.Parent = container
 
+local gradient = Instance.new("UIGradient")
+gradient.Color = GRAD_NORMAL
+gradient.Rotation = 90
+gradient.Parent = container
+
 local botao = Instance.new("TextButton")
+botao.Name = "BtnPular"
 botao.Size = UDim2.new(1, 0, 1, 0)
 botao.BackgroundTransparency = 1
 botao.Text = "⬆"
@@ -46,20 +102,20 @@ local textSize = Instance.new("UITextSizeConstraint")
 textSize.MaxTextSize = 30
 textSize.Parent = botao
 
-print("[TESTE] Botão ⬆ criado")
-
 local toggleContainer = Instance.new("Frame")
+toggleContainer.Name = "ContainerToggle"
 toggleContainer.Size = UDim2.new(0, 50, 0, 22)
-toggleContainer.Position = UDim2.new(1, -70, 0, 78)
+toggleContainer.Position = UDim2.new(0, 5, 0, 60)
 toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
 toggleContainer.BorderSizePixel = 0
-toggleContainer.Parent = screenGui
+toggleContainer.Parent = mainFrame
 
 local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(0, 6)
 toggleCorner.Parent = toggleContainer
 
 local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "BtnToggle"
 toggleBtn.Size = UDim2.new(1, 0, 1, 0)
 toggleBtn.BackgroundTransparency = 1
 toggleBtn.Text = "∞ OFF"
@@ -74,12 +130,63 @@ local toggleTextSize = Instance.new("UITextSizeConstraint")
 toggleTextSize.MaxTextSize = 13
 toggleTextSize.Parent = toggleBtn
 
-print("[TESTE] Toggle ∞ criado")
+print("[jumpindex] 4. Botão ⬆ e toggle ∞ criados")
 
 local infiniteArmado = false
 local segurando = false
 local loopRodando = false
-local forcaPulo = 50
+local piscando = false
+local forcaAlterada = false
+
+local function atualizarVisualBotao()
+    if piscando then return end
+    if segurando then
+        container.BackgroundColor3 = COR_VERDE_ATIVO
+        gradient.Color = GRAD_ATIVO
+    elseif infiniteArmado then
+        container.BackgroundColor3 = COR_VERDE_ARM
+        gradient.Color = GRAD_ARM
+    elseif forcaAlterada then
+        container.BackgroundColor3 = COR_VERMELHO
+        gradient.Color = GRAD_VERMELHO
+    else
+        container.BackgroundColor3 = COR_AZUL_NORMAL
+        gradient.Color = GRAD_NORMAL
+    end
+end
+
+local function piscarClique()
+    piscando = true
+    if forcaAlterada then
+        container.BackgroundColor3 = COR_VERMELHO_CLARO
+        gradient.Color = GRAD_VERMELHO_CLARO
+    else
+        container.BackgroundColor3 = COR_AZUL_CLARO
+        gradient.Color = GRAD_CLARO
+    end
+    task.spawn(function()
+        task.wait(0.15)
+        piscando = false
+        atualizarVisualBotao()
+    end)
+end
+
+local function atualizarToggle()
+    if infiniteArmado then
+        toggleBtn.Text = "∞ ON"
+        toggleBtn.TextColor3 = Color3.fromRGB(120, 255, 160)
+        toggleContainer.BackgroundColor3 = Color3.fromRGB(25, 70, 40)
+    else
+        toggleBtn.Text = "∞ OFF"
+        toggleBtn.TextColor3 = Color3.fromRGB(180, 200, 230)
+        toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+    end
+end
+
+print("[jumpindex] 5. Funções visuais criadas")
+
+local ultimoPulo = 0
+local COOLDOWN = 0.35
 
 local function estaNoChao(humanoid)
     local estado = humanoid:GetState()
@@ -107,11 +214,9 @@ local function aplicarPulo()
     hrp.AssemblyLinearVelocity = Vector3.new(vel.X, forcaPulo, vel.Z)
 end
 
-local ultimoPulo = 0
-
 local function pularNormal()
     local agora = tick()
-    if agora - ultimoPulo < 0.35 then return end
+    if agora - ultimoPulo < COOLDOWN then return end
     local character = player.Character
     if not character then return end
     local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -161,39 +266,342 @@ local function loopInfinite()
     end)
 end
 
+print("[jumpindex] 6. Funções de pulo criadas")
+
 toggleBtn.MouseButton1Click:Connect(function()
     infiniteArmado = not infiniteArmado
-    if infiniteArmado then
-        toggleBtn.Text = "∞ ON"
-        toggleBtn.TextColor3 = Color3.fromRGB(120, 255, 160)
-        toggleContainer.BackgroundColor3 = Color3.fromRGB(25, 70, 40)
-    else
-        segurando = false
-        toggleBtn.Text = "∞ OFF"
-        toggleBtn.TextColor3 = Color3.fromRGB(180, 200, 230)
-        toggleContainer.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
-    end
+    if not infiniteArmado then segurando = false end
+    atualizarToggle()
+    atualizarVisualBotao()
 end)
 
-botao.MouseButton1Down:Connect(function()
+local function aoPressionar()
     if infiniteArmado then
         segurando = true
+        atualizarVisualBotao()
         loopInfinite()
     else
+        piscarClique()
         pularNormal()
     end
-end)
+end
 
-botao.MouseButton1Up:Connect(function()
-    segurando = false
-end)
+local function aoSoltar()
+    if segurando then
+        segurando = false
+        atualizarVisualBotao()
+    end
+end
+
+botao.MouseButton1Down:Connect(aoPressionar)
+botao.MouseButton1Up:Connect(aoSoltar)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1
     or input.UserInputType == Enum.UserInputType.Touch then
-        segurando = false
+        aoSoltar()
     end
 end)
 
-print("[TESTE] Eventos conectados")
-print("[TESTE] Script carregado com sucesso!")
+atualizarToggle()
+atualizarVisualBotao()
+
+print("[jumpindex] 7. Eventos do botão conectados")
+
+local btnInicializar = Instance.new("TextButton")
+btnInicializar.Name = "BtnInicializar"
+btnInicializar.Size = UDim2.new(0, 120, 0, 40)
+btnInicializar.Position = UDim2.new(1, -150, 0, 120)
+btnInicializar.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+btnInicializar.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnInicializar.Text = "Inicializar"
+btnInicializar.TextScaled = true
+btnInicializar.Font = Enum.Font.GothamBold
+btnInicializar.AutoButtonColor = false
+btnInicializar.BorderSizePixel = 0
+btnInicializar.Visible = false
+btnInicializar.Parent = screenGui
+
+local btnIniCorner = Instance.new("UICorner")
+btnIniCorner.CornerRadius = UDim.new(0, 10)
+btnIniCorner.Parent = btnInicializar
+
+local btnIniTextSize = Instance.new("UITextSizeConstraint")
+btnIniTextSize.MaxTextSize = 18
+btnIniTextSize.Parent = btnInicializar
+
+print("[jumpindex] 8. Botão Inicializar criado")
+
+local keyGui = Instance.new("ScreenGui")
+keyGui.Name = "JumpIndexKeyGui"
+keyGui.ResetOnSpawn = false
+keyGui.IgnoreGuiInset = true
+keyGui.DisplayOrder = 10000
+keyGui.Parent = playerGui
+
+local keyPanel = Instance.new("Frame")
+keyPanel.Size = UDim2.new(0, 350, 0, 260)
+keyPanel.Position = UDim2.new(0.5, -175, 0.5, -130)
+keyPanel.BackgroundColor3 = Color3.fromRGB(20, 28, 45)
+keyPanel.BorderSizePixel = 0
+keyPanel.Visible = false
+keyPanel.Parent = keyGui
+
+local keyCorner = Instance.new("UICorner")
+keyCorner.CornerRadius = UDim.new(0, 14)
+keyCorner.Parent = keyPanel
+
+local keyStroke = Instance.new("UIStroke")
+keyStroke.Color = Color3.fromRGB(80, 130, 220)
+keyStroke.Thickness = 2
+keyStroke.Parent = keyPanel
+
+local keyTitle = Instance.new("TextLabel")
+keyTitle.Size = UDim2.new(1, -40, 0, 25)
+keyTitle.Position = UDim2.new(0, 20, 0, 15)
+keyTitle.BackgroundTransparency = 1
+keyTitle.Text = "As keys estão aprovadas abaixo"
+keyTitle.TextColor3 = Color3.fromRGB(120, 180, 255)
+keyTitle.TextScaled = true
+keyTitle.Font = Enum.Font.GothamBold
+keyTitle.Parent = keyPanel
+
+local keyTitleSize = Instance.new("UITextSizeConstraint")
+keyTitleSize.MaxTextSize = 16
+keyTitleSize.Parent = keyTitle
+
+local keySubPT = Instance.new("TextLabel")
+keySubPT.Size = UDim2.new(1, -40, 0, 18)
+keySubPT.Position = UDim2.new(0, 20, 0, 42)
+keySubPT.BackgroundTransparency = 1
+keySubPT.Text = "As keys estão aprovadas acima"
+keySubPT.TextColor3 = Color3.fromRGB(180, 200, 230)
+keySubPT.TextScaled = true
+keySubPT.Font = Enum.Font.Gotham
+keySubPT.Parent = keyPanel
+
+local keySubPTSize = Instance.new("UITextSizeConstraint")
+keySubPTSize.MaxTextSize = 12
+keySubPTSize.Parent = keySubPT
+
+local keyList = Instance.new("TextLabel")
+keyList.Size = UDim2.new(1, -40, 0, 20)
+keyList.Position = UDim2.new(0, 20, 0, 62)
+keyList.BackgroundTransparency = 1
+keyList.Text = "Jumpindex  |  Jump index"
+keyList.TextColor3 = Color3.fromRGB(120, 255, 160)
+keyList.TextScaled = true
+keyList.Font = Enum.Font.GothamBold
+keyList.Parent = keyPanel
+
+local keyListSize = Instance.new("UITextSizeConstraint")
+keyListSize.MaxTextSize = 15
+keyListSize.Parent = keyList
+
+local keyField = Instance.new("TextBox")
+keyField.Size = UDim2.new(1, -40, 0, 35)
+keyField.Position = UDim2.new(0, 20, 0, 95)
+keyField.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+keyField.TextColor3 = Color3.fromRGB(255, 255, 255)
+keyField.PlaceholderText = "Digite a key aqui..."
+keyField.PlaceholderColor3 = Color3.fromRGB(120, 140, 170)
+keyField.Text = ""
+keyField.TextScaled = true
+keyField.Font = Enum.Font.Gotham
+keyField.BorderSizePixel = 0
+keyField.ClearTextOnFocus = false
+keyField.Parent = keyPanel
+
+local keyFieldCorner = Instance.new("UICorner")
+keyFieldCorner.CornerRadius = UDim.new(0, 8)
+keyFieldCorner.Parent = keyField
+
+local keyFieldSize = Instance.new("UITextSizeConstraint")
+keyFieldSize.MaxTextSize = 16
+keyFieldSize.Parent = keyField
+
+local keyMsg = Instance.new("TextLabel")
+keyMsg.Size = UDim2.new(1, -40, 0, 18)
+keyMsg.Position = UDim2.new(0, 20, 0, 135)
+keyMsg.BackgroundTransparency = 1
+keyMsg.Text = ""
+keyMsg.TextColor3 = Color3.fromRGB(255, 90, 90)
+keyMsg.TextScaled = true
+keyMsg.Font = Enum.Font.GothamBold
+keyMsg.Parent = keyPanel
+
+local keyMsgSize = Instance.new("UITextSizeConstraint")
+keyMsgSize.MaxTextSize = 13
+keyMsgSize.Parent = keyMsg
+
+local btnVerificar = Instance.new("TextButton")
+btnVerificar.Size = UDim2.new(1, -40, 0, 40)
+btnVerificar.Position = UDim2.new(0, 20, 0, 160)
+btnVerificar.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+btnVerificar.Text = "✅ Verificar"
+btnVerificar.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnVerificar.TextScaled = true
+btnVerificar.Font = Enum.Font.GothamBold
+btnVerificar.AutoButtonColor = false
+btnVerificar.BorderSizePixel = 0
+btnVerificar.Parent = keyPanel
+
+local btnVerCorner = Instance.new("UICorner")
+btnVerCorner.CornerRadius = UDim.new(0, 8)
+btnVerCorner.Parent = btnVerificar
+
+local btnVerSize = Instance.new("UITextSizeConstraint")
+btnVerSize.MaxTextSize = 16
+btnVerSize.Parent = btnVerificar
+
+local btnKeyClose = Instance.new("TextButton")
+btnKeyClose.Size = UDim2.new(0, 28, 0, 28)
+btnKeyClose.Position = UDim2.new(1, -36, 0, 8)
+btnKeyClose.BackgroundColor3 = Color3.fromRGB(200, 50, 60)
+btnKeyClose.Text = "✕"
+btnKeyClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnKeyClose.TextScaled = true
+btnKeyClose.Font = Enum.Font.GothamBold
+btnKeyClose.AutoButtonColor = false
+btnKeyClose.BorderSizePixel = 0
+btnKeyClose.Parent = keyPanel
+
+local btnKeyCloseCorner = Instance.new("UICorner")
+btnKeyCloseCorner.CornerRadius = UDim.new(1, 0)
+btnKeyCloseCorner.Parent = btnKeyClose
+
+local btnKeyCloseSize = Instance.new("UITextSizeConstraint")
+btnKeyCloseSize.MaxTextSize = 16
+btnKeyCloseSize.Parent = btnKeyClose
+
+print("[jumpindex] 9. Key System criado (interface)")
+
+local forcaGui = Instance.new("ScreenGui")
+forcaGui.Name = "JumpIndexForcaGui"
+forcaGui.ResetOnSpawn = false
+forcaGui.IgnoreGuiInset = true
+forcaGui.DisplayOrder = 10000
+forcaGui.Parent = playerGui
+
+local forcaPanel = Instance.new("Frame")
+forcaPanel.Size = UDim2.new(0, 300, 0, 240)
+forcaPanel.Position = UDim2.new(0.5, -150, 0.5, -120)
+forcaPanel.BackgroundColor3 = Color3.fromRGB(20, 28, 45)
+forcaPanel.BorderSizePixel = 0
+forcaPanel.Visible = false
+forcaPanel.Parent = forcaGui
+
+local forcaPanelCorner = Instance.new("UICorner")
+forcaPanelCorner.CornerRadius = UDim.new(0, 14)
+forcaPanelCorner.Parent = forcaPanel
+
+local forcaStroke = Instance.new("UIStroke")
+forcaStroke.Color = Color3.fromRGB(80, 130, 220)
+forcaStroke.Thickness = 2
+forcaStroke.Parent = forcaPanel
+
+local forcaTitle = Instance.new("TextLabel")
+forcaTitle.Size = UDim2.new(1, -45, 0, 30)
+forcaTitle.Position = UDim2.new(0, 8, 0, 8)
+forcaTitle.BackgroundTransparency = 1
+forcaTitle.Text = "⚙️ Força do Pulo"
+forcaTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+forcaTitle.TextScaled = true
+forcaTitle.Font = Enum.Font.GothamBold
+forcaTitle.TextXAlignment = Enum.TextXAlignment.Left
+forcaTitle.Parent = forcaPanel
+
+local forcaTitleSize = Instance.new("UITextSizeConstraint")
+forcaTitleSize.MaxTextSize = 18
+forcaTitleSize.Parent = forcaTitle
+
+local btnForcaClose = Instance.new("TextButton")
+btnForcaClose.Size = UDim2.new(0, 28, 0, 28)
+btnForcaClose.Position = UDim2.new(1, -36, 0, 8)
+btnForcaClose.BackgroundColor3 = Color3.fromRGB(200, 50, 60)
+btnForcaClose.Text = "✕"
+btnForcaClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnForcaClose.TextScaled = true
+btnForcaClose.Font = Enum.Font.GothamBold
+btnForcaClose.AutoButtonColor = false
+btnForcaClose.BorderSizePixel = 0
+btnForcaClose.Parent = forcaPanel
+
+local btnForcaCloseCorner = Instance.new("UICorner")
+btnForcaCloseCorner.CornerRadius = UDim.new(1, 0)
+btnForcaCloseCorner.Parent = btnForcaClose
+
+local btnForcaCloseSize = Instance.new("UITextSizeConstraint")
+btnForcaCloseSize.MaxTextSize = 16
+btnForcaCloseSize.Parent = btnForcaClose
+
+local forcaSelecionado = Instance.new("TextLabel")
+forcaSelecionado.Size = UDim2.new(1, 0, 0, 25)
+forcaSelecionado.Position = UDim2.new(0, 0, 0, 45)
+forcaSelecionado.BackgroundTransparency = 1
+forcaSelecionado.Text = "Selecionado: " .. FORCA_PADRAO
+forcaSelecionado.TextColor3 = Color3.fromRGB(150, 200, 255)
+forcaSelecionado.TextScaled = true
+forcaSelecionado.Font = Enum.Font.Gotham
+forcaSelecionado.Parent = forcaPanel
+
+local forcaSelSize = Instance.new("UITextSizeConstraint")
+forcaSelSize.MaxTextSize = 16
+forcaSelSize.Parent = forcaSelecionado
+
+local forcaAplicado = Instance.new("TextLabel")
+forcaAplicado.Size = UDim2.new(1, 0, 0, 20)
+forcaAplicado.Position = UDim2.new(0, 0, 0, 68)
+forcaAplicado.BackgroundTransparency = 1
+forcaAplicado.Text = "✔ Aplicado: " .. FORCA_PADRAO
+forcaAplicado.TextColor3 = Color3.fromRGB(100, 255, 150)
+forcaAplicado.TextScaled = true
+forcaAplicado.Font = Enum.Font.Gotham
+forcaAplicado.Parent = forcaPanel
+
+local forcaAplSize = Instance.new("UITextSizeConstraint")
+forcaAplSize.MaxTextSize = 14
+forcaAplSize.Parent = forcaAplicado
+
+local forcaSliderBg = Instance.new("Frame")
+forcaSliderBg.Size = UDim2.new(0.85, 0, 0, 10)
+forcaSliderBg.Position = UDim2.new(0.075, 0, 0, 100)
+forcaSliderBg.BackgroundColor3 = Color3.fromRGB(60, 70, 90)
+forcaSliderBg.BorderSizePixel = 0
+forcaSliderBg.Parent = forcaPanel
+
+local forcaSliderBgCorner = Instance.new("UICorner")
+forcaSliderBgCorner.CornerRadius = UDim.new(1, 0)
+forcaSliderBgCorner.Parent = forcaSliderBg
+
+local forcaSliderFill = Instance.new("Frame")
+forcaSliderFill.Size = UDim2.new(0.22, 0, 1, 0)
+forcaSliderFill.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+forcaSliderFill.BorderSizePixel = 0
+forcaSliderFill.Parent = forcaSliderBg
+
+local forcaSliderFillCorner = Instance.new("UICorner")
+forcaSliderFillCorner.CornerRadius = UDim.new(1, 0)
+forcaSliderFillCorner.Parent = forcaSliderFill
+
+local forcaSliderBtn = Instance.new("TextButton")
+forcaSliderBtn.Size = UDim2.new(0, 22, 0, 22)
+forcaSliderBtn.Position = UDim2.new(0.22, -11, 0.5, -11)
+forcaSliderBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+forcaSliderBtn.Text = ""
+forcaSliderBtn.BorderSizePixel = 0
+forcaSliderBtn.AutoButtonColor = false
+forcaSliderBtn.Parent = forcaSliderBg
+
+local forcaSliderBtnCorner = Instance.new("UICorner")
+forcaSliderBtnCorner.CornerRadius = UDim.new(1, 0)
+forcaSliderBtnCorner.Parent = forcaSliderBtn
+
+local forcaMin = Instance.new("TextLabel")
+forcaMin.Size = UDim2.new(0, 40, 0, 20)
+forcaMin.Position = UDim2.new(0.075, 0, 0, 115)
+forcaMin.BackgroundTransparency = 1
+forcaMin.Text = "30"
+forcaMin.TextColor3 = Color3.fromRGB(150, 160, 180)
+forcaMin.TextScaled = true
+fo
