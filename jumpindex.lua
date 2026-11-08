@@ -1,12 +1,8 @@
 --[[
-    jumpindex.lua
-    - ∞ OFF: clicar ⬆ = 1 pulo normal (ChangeState + velocidade, sai de cadeira/carro)
-    - ∞ ON: SEGURAR ⬆ = pula infinitamente / soltar = para
-    - Botão ⬆ pisca azul claro ao clicar no OFF
-    - Anti-spam: ignora clique se não estiver no chão
-    - Intro com 6 etapas + textos PT/EN com MESMO tamanho de letra
-    - Tela preta PERMANECE até o load ficar 100% pronto
+    jumpindex.lua — VERSÃO FINAL COMPLETA
 --]]
+
+print("[jumpindex] 1. Iniciando...")
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -15,14 +11,51 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+print("[jumpindex] 2. PlayerGui OK")
+
 local antiga = playerGui:FindFirstChild("BotaoPularGui")
 if antiga then antiga:Destroy() end
 local antigaIntro = playerGui:FindFirstChild("JumpIndexIntro")
 if antigaIntro then antigaIntro:Destroy() end
 
-------------------------------------------------------------
--- SCREEN GUI PRINCIPAL
-------------------------------------------------------------
+print("[jumpindex] 3. GUIs antigas removidas")
+
+local FORCA_PADRAO = 50
+local forcaPulo = FORCA_PADRAO
+
+local COR_AZUL_NORMAL = Color3.fromRGB(50, 130, 255)
+local COR_AZUL_CLARO = Color3.fromRGB(200, 230, 255)
+local COR_VERDE_ARM = Color3.fromRGB(40, 110, 70)
+local COR_VERDE_ATIVO = Color3.fromRGB(80, 220, 120)
+local COR_VERMELHO = Color3.fromRGB(220, 50, 60)
+local COR_VERMELHO_CLARO = Color3.fromRGB(255, 150, 150)
+local COR_CIANO = Color3.fromRGB(0, 255, 255)
+
+local GRAD_NORMAL = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
+})
+local GRAD_CLARO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 230, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 230, 255))
+})
+local GRAD_ARM = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 50))
+})
+local GRAD_ATIVO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 255, 160)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 140, 60))
+})
+local GRAD_VERMELHO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 100, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 30, 40))
+})
+local GRAD_VERMELHO_CLARO = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 150, 150)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 150, 150))
+})
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "BotaoPularGui"
 screenGui.ResetOnSpawn = false
@@ -41,7 +74,7 @@ local container = Instance.new("Frame")
 container.Name = "ContainerBotao"
 container.Size = UDim2.new(0, 50, 0, 50)
 container.Position = UDim2.new(0, 5, 0, 0)
-container.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+container.BackgroundColor3 = COR_AZUL_NORMAL
 container.BorderSizePixel = 0
 container.Parent = mainFrame
 
@@ -50,10 +83,7 @@ corner.CornerRadius = UDim.new(1, 0)
 corner.Parent = container
 
 local gradient = Instance.new("UIGradient")
-gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
-})
+gradient.Color = GRAD_NORMAL
 gradient.Rotation = 90
 gradient.Parent = container
 
@@ -101,40 +131,47 @@ local toggleTextSize = Instance.new("UITextSizeConstraint")
 toggleTextSize.MaxTextSize = 13
 toggleTextSize.Parent = toggleBtn
 
-------------------------------------------------------------
--- CORES / ESTADOS
-------------------------------------------------------------
-local COR_AZUL_NORMAL = Color3.fromRGB(50, 130, 255)
-local COR_AZUL_CLARO  = Color3.fromRGB(200, 230, 255)
-local COR_VERDE_ARM   = Color3.fromRGB(40, 110, 70)
-local COR_VERDE_ATIVO = Color3.fromRGB(80, 220, 120)
-
-local GRAD_NORMAL = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 200))
-})
-local GRAD_CLARO = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(200, 230, 255)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 230, 255))
-})
-local GRAD_ARM = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 160, 100)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 80, 50))
-})
-local GRAD_ATIVO = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 255, 160)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 140, 60))
-})
+print("[jumpindex] 4. Botão ⬆ e toggle ∞ criados")
 
 local infiniteArmado = false
-local segurando      = false
-local loopRodando    = false
-local piscando       = false
-local FORCA_PULO     = 50
+local segurando = false
+local loopRodando = false
+local piscando = false
+local forcaAlterada = false
 
-------------------------------------------------------------
--- FUNÇÕES DO BOTÃO
-------------------------------------------------------------
+local function atualizarVisualBotao()
+    if piscando then return end
+    if segurando then
+        container.BackgroundColor3 = COR_VERDE_ATIVO
+        gradient.Color = GRAD_ATIVO
+    elseif infiniteArmado then
+        container.BackgroundColor3 = COR_VERDE_ARM
+        gradient.Color = GRAD_ARM
+    elseif forcaAlterada then
+        container.BackgroundColor3 = COR_VERMELHO
+        gradient.Color = GRAD_VERMELHO
+    else
+        container.BackgroundColor3 = COR_AZUL_NORMAL
+        gradient.Color = GRAD_NORMAL
+    end
+end
+
+local function piscarClique()
+    piscando = true
+    if forcaAlterada then
+        container.BackgroundColor3 = COR_VERMELHO_CLARO
+        gradient.Color = GRAD_VERMELHO_CLARO
+    else
+        container.BackgroundColor3 = COR_AZUL_CLARO
+        gradient.Color = GRAD_CLARO
+    end
+    task.spawn(function()
+        task.wait(0.15)
+        piscando = false
+        atualizarVisualBotao()
+    end)
+end
+
 local function atualizarToggle()
     if infiniteArmado then
         toggleBtn.Text = "∞ ON"
@@ -147,40 +184,15 @@ local function atualizarToggle()
     end
 end
 
-local function atualizarVisualBotao()
-    if piscando then return end
-    if segurando then
-        container.BackgroundColor3 = COR_VERDE_ATIVO
-        gradient.Color = GRAD_ATIVO
-    elseif infiniteArmado then
-        container.BackgroundColor3 = COR_VERDE_ARM
-        gradient.Color = GRAD_ARM
-    else
-        container.BackgroundColor3 = COR_AZUL_NORMAL
-        gradient.Color = GRAD_NORMAL
-    end
-end
+print("[jumpindex] 5. Funções visuais criadas")
 
-local function piscarAzulClaro()
-    piscando = true
-    container.BackgroundColor3 = COR_AZUL_CLARO
-    gradient.Color = GRAD_CLARO
-    task.spawn(function()
-        task.wait(0.15)
-        piscando = false
-        atualizarVisualBotao()
-    end)
-end
+local ultimoPulo = 0
+local COOLDOWN = 0.35
 
 local function estaNoChao(humanoid)
     local estado = humanoid:GetState()
-    if estado == Enum.HumanoidStateType.Jumping
-    or estado == Enum.HumanoidStateType.Freefall then
-        return false
-    end
-    if humanoid.FloorMaterial == Enum.Material.Air then
-        return false
-    end
+    if estado == Enum.HumanoidStateType.Jumping or estado == Enum.HumanoidStateType.Freefall then return false end
+    if humanoid.FloorMaterial == Enum.Material.Air then return false end
     return true
 end
 
@@ -190,28 +202,21 @@ local function aplicarPulo()
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     local hrp = character:FindFirstChild("HumanoidRootPart")
     if not humanoid or not hrp then return end
-
     pcall(function()
         humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
     end)
-
     local vel = hrp.AssemblyLinearVelocity
-    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, FORCA_PULO, vel.Z)
+    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, forcaPulo, vel.Z)
 end
-
-local ultimoPulo = 0
-local COOLDOWN = 0.35
 
 local function pularNormal()
     local agora = tick()
     if agora - ultimoPulo < COOLDOWN then return end
-
     local character = player.Character
     if not character then return end
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
-
     if humanoid.Sit then
         ultimoPulo = agora
         pcall(function() humanoid.Sit = false end)
@@ -225,7 +230,6 @@ local function pularNormal()
         end)
         return
     end
-
     if not estaNoChao(humanoid) then return end
     ultimoPulo = agora
     aplicarPulo()
@@ -234,7 +238,6 @@ end
 local function loopInfinite()
     if loopRodando then return end
     loopRodando = true
-
     task.spawn(function()
         while segurando and infiniteArmado do
             local character = player.Character
@@ -242,15 +245,13 @@ local function loopInfinite()
                 local humanoid = character:FindFirstChildOfClass("Humanoid")
                 local hrp = character:FindFirstChild("HumanoidRootPart")
                 if humanoid and hrp then
-                    pcall(function()
-                        if humanoid.Sit then humanoid.Sit = false end
-                    end)
+                    pcall(function() if humanoid.Sit then humanoid.Sit = false end end)
                     pcall(function()
                         humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
                         humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
                     end)
                     local vel = hrp.AssemblyLinearVelocity
-                    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, FORCA_PULO, vel.Z)
+                    hrp.AssemblyLinearVelocity = Vector3.new(vel.X, forcaPulo, vel.Z)
                 end
             end
             task.wait(0.05)
@@ -258,6 +259,8 @@ local function loopInfinite()
         loopRodando = false
     end)
 end
+
+print("[jumpindex] 6. Funções de pulo criadas")
 
 toggleBtn.MouseButton1Click:Connect(function()
     infiniteArmado = not infiniteArmado
@@ -272,7 +275,7 @@ local function aoPressionar()
         atualizarVisualBotao()
         loopInfinite()
     else
-        piscarAzulClaro()
+        piscarClique()
         pularNormal()
     end
 end
@@ -288,18 +291,508 @@ botao.MouseButton1Down:Connect(aoPressionar)
 botao.MouseButton1Up:Connect(aoSoltar)
 
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        aoSoltar()
-    end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then aoSoltar() end
 end)
 
 atualizarToggle()
 atualizarVisualBotao()
 
-------------------------------------------------------------
--- INTRO
-------------------------------------------------------------
+print("[jumpindex] 7. Eventos do botão conectados")
+
+local btnInicializar = Instance.new("TextButton")
+btnInicializar.Name = "BtnInicializar"
+btnInicializar.Size = UDim2.new(0, 120, 0, 40)
+btnInicializar.Position = UDim2.new(1, -150, 0, 120)
+btnInicializar.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+btnInicializar.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnInicializar.Text = "Inicializar"
+btnInicializar.TextScaled = true
+btnInicializar.Font = Enum.Font.GothamBold
+btnInicializar.AutoButtonColor = false
+btnInicializar.BorderSizePixel = 0
+btnInicializar.Visible = false
+btnInicializar.Parent = screenGui
+
+local btnIniCorner = Instance.new("UICorner")
+btnIniCorner.CornerRadius = UDim.new(0, 10)
+btnIniCorner.Parent = btnInicializar
+
+local btnIniTextSize = Instance.new("UITextSizeConstraint")
+btnIniTextSize.MaxTextSize = 18
+btnIniTextSize.Parent = btnInicializar
+
+print("[jumpindex] 8. Botão Inicializar criado")
+
+local keyGui = Instance.new("ScreenGui")
+keyGui.Name = "JumpIndexKeyGui"
+keyGui.ResetOnSpawn = false
+keyGui.IgnoreGuiInset = true
+keyGui.DisplayOrder = 10000
+keyGui.Parent = playerGui
+
+local keyPanel = Instance.new("Frame")
+keyPanel.Size = UDim2.new(0, 350, 0, 260)
+keyPanel.Position = UDim2.new(0.5, -175, 0.5, -130)
+keyPanel.BackgroundColor3 = Color3.fromRGB(20, 28, 45)
+keyPanel.BorderSizePixel = 0
+keyPanel.Visible = false
+keyPanel.Parent = keyGui
+
+local keyCorner = Instance.new("UICorner")
+keyCorner.CornerRadius = UDim.new(0, 14)
+keyCorner.Parent = keyPanel
+
+local keyStroke = Instance.new("UIStroke")
+keyStroke.Color = Color3.fromRGB(80, 130, 220)
+keyStroke.Thickness = 2
+keyStroke.Parent = keyPanel
+
+local keyTitle = Instance.new("TextLabel")
+keyTitle.Size = UDim2.new(1, -40, 0, 25)
+keyTitle.Position = UDim2.new(0, 20, 0, 15)
+keyTitle.BackgroundTransparency = 1
+keyTitle.Text = "As keys estão aprovadas abaixo"
+keyTitle.TextColor3 = Color3.fromRGB(120, 180, 255)
+keyTitle.TextScaled = true
+keyTitle.Font = Enum.Font.GothamBold
+keyTitle.Parent = keyPanel
+
+local keyTitleSize = Instance.new("UITextSizeConstraint")
+keyTitleSize.MaxTextSize = 16
+keyTitleSize.Parent = keyTitle
+
+local keySubPT = Instance.new("TextLabel")
+keySubPT.Size = UDim2.new(1, -40, 0, 18)
+keySubPT.Position = UDim2.new(0, 20, 0, 42)
+keySubPT.BackgroundTransparency = 1
+keySubPT.Text = "As keys estão aprovadas acima"
+keySubPT.TextColor3 = Color3.fromRGB(180, 200, 230)
+keySubPT.TextScaled = true
+keySubPT.Font = Enum.Font.Gotham
+keySubPT.Parent = keyPanel
+
+local keySubPTSize = Instance.new("UITextSizeConstraint")
+keySubPTSize.MaxTextSize = 12
+keySubPTSize.Parent = keySubPT
+
+local keyList = Instance.new("TextLabel")
+keyList.Size = UDim2.new(1, -40, 0, 20)
+keyList.Position = UDim2.new(0, 20, 0, 62)
+keyList.BackgroundTransparency = 1
+keyList.Text = "jumpindex  |  jump index"
+keyList.TextColor3 = Color3.fromRGB(120, 255, 160)
+keyList.TextScaled = true
+keyList.Font = Enum.Font.GothamBold
+keyList.Parent = keyPanel
+
+local keyListSize = Instance.new("UITextSizeConstraint")
+keyListSize.MaxTextSize = 15
+keyListSize.Parent = keyList
+
+local keyField = Instance.new("TextBox")
+keyField.Size = UDim2.new(1, -40, 0, 35)
+keyField.Position = UDim2.new(0, 20, 0, 95)
+keyField.BackgroundColor3 = Color3.fromRGB(35, 45, 65)
+keyField.TextColor3 = Color3.fromRGB(255, 255, 255)
+keyField.PlaceholderText = "Digite a key aqui..."
+keyField.PlaceholderColor3 = Color3.fromRGB(120, 140, 170)
+keyField.Text = ""
+keyField.TextScaled = true
+keyField.Font = Enum.Font.Gotham
+keyField.BorderSizePixel = 0
+keyField.ClearTextOnFocus = false
+keyField.Parent = keyPanel
+
+local keyFieldCorner = Instance.new("UICorner")
+keyFieldCorner.CornerRadius = UDim.new(0, 8)
+keyFieldCorner.Parent = keyField
+
+local keyFieldSize = Instance.new("UITextSizeConstraint")
+keyFieldSize.MaxTextSize = 16
+keyFieldSize.Parent = keyField
+
+local keyMsg = Instance.new("TextLabel")
+keyMsg.Size = UDim2.new(1, -40, 0, 18)
+keyMsg.Position = UDim2.new(0, 20, 0, 135)
+keyMsg.BackgroundTransparency = 1
+keyMsg.Text = ""
+keyMsg.TextColor3 = Color3.fromRGB(255, 90, 90)
+keyMsg.TextScaled = true
+keyMsg.Font = Enum.Font.GothamBold
+keyMsg.Parent = keyPanel
+
+local keyMsgSize = Instance.new("UITextSizeConstraint")
+keyMsgSize.MaxTextSize = 13
+keyMsgSize.Parent = keyMsg
+
+local btnVerificar = Instance.new("TextButton")
+btnVerificar.Size = UDim2.new(1, -40, 0, 40)
+btnVerificar.Position = UDim2.new(0, 20, 0, 160)
+btnVerificar.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+btnVerificar.Text = "✅ Verificar"
+btnVerificar.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnVerificar.TextScaled = true
+btnVerificar.Font = Enum.Font.GothamBold
+btnVerificar.AutoButtonColor = false
+btnVerificar.BorderSizePixel = 0
+btnVerificar.Parent = keyPanel
+
+local btnVerCorner = Instance.new("UICorner")
+btnVerCorner.CornerRadius = UDim.new(0, 8)
+btnVerCorner.Parent = btnVerificar
+
+local btnVerSize = Instance.new("UITextSizeConstraint")
+btnVerSize.MaxTextSize = 16
+btnVerSize.Parent = btnVerificar
+
+local btnKeyClose = Instance.new("TextButton")
+btnKeyClose.Size = UDim2.new(0, 28, 0, 28)
+btnKeyClose.Position = UDim2.new(1, -36, 0, 8)
+btnKeyClose.BackgroundColor3 = Color3.fromRGB(200, 50, 60)
+btnKeyClose.Text = "✕"
+btnKeyClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnKeyClose.TextScaled = true
+btnKeyClose.Font = Enum.Font.GothamBold
+btnKeyClose.AutoButtonColor = false
+btnKeyClose.BorderSizePixel = 0
+btnKeyClose.Parent = keyPanel
+
+local btnKeyCloseCorner = Instance.new("UICorner")
+btnKeyCloseCorner.CornerRadius = UDim.new(1, 0)
+btnKeyCloseCorner.Parent = btnKeyClose
+
+local btnKeyCloseSize = Instance.new("UITextSizeConstraint")
+btnKeyCloseSize.MaxTextSize = 16
+btnKeyCloseSize.Parent = btnKeyClose
+
+print("[jumpindex] 9. Key System criado (interface)")
+
+local forcaGui = Instance.new("ScreenGui")
+forcaGui.Name = "JumpIndexForcaGui"
+forcaGui.ResetOnSpawn = false
+forcaGui.IgnoreGuiInset = true
+forcaGui.DisplayOrder = 10000
+forcaGui.Parent = playerGui
+
+local forcaPanel = Instance.new("Frame")
+forcaPanel.Size = UDim2.new(0, 300, 0, 240)
+forcaPanel.Position = UDim2.new(0.5, -150, 0.5, -120)
+forcaPanel.BackgroundColor3 = Color3.fromRGB(20, 28, 45)
+forcaPanel.BorderSizePixel = 0
+forcaPanel.Visible = false
+forcaPanel.Parent = forcaGui
+
+local forcaPanelCorner = Instance.new("UICorner")
+forcaPanelCorner.CornerRadius = UDim.new(0, 14)
+forcaPanelCorner.Parent = forcaPanel
+
+local forcaStroke = Instance.new("UIStroke")
+forcaStroke.Color = Color3.fromRGB(80, 130, 220)
+forcaStroke.Thickness = 2
+forcaStroke.Parent = forcaPanel
+
+local forcaTitle = Instance.new("TextLabel")
+forcaTitle.Size = UDim2.new(1, -45, 0, 30)
+forcaTitle.Position = UDim2.new(0, 8, 0, 8)
+forcaTitle.BackgroundTransparency = 1
+forcaTitle.Text = "⚙️ Força do Pulo"
+forcaTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+forcaTitle.TextScaled = true
+forcaTitle.Font = Enum.Font.GothamBold
+forcaTitle.TextXAlignment = Enum.TextXAlignment.Left
+forcaTitle.Parent = forcaPanel
+
+local forcaTitleSize = Instance.new("UITextSizeConstraint")
+forcaTitleSize.MaxTextSize = 18
+forcaTitleSize.Parent = forcaTitle
+
+local btnForcaClose = Instance.new("TextButton")
+btnForcaClose.Size = UDim2.new(0, 28, 0, 28)
+btnForcaClose.Position = UDim2.new(1, -36, 0, 8)
+btnForcaClose.BackgroundColor3 = Color3.fromRGB(200, 50, 60)
+btnForcaClose.Text = "✕"
+btnForcaClose.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnForcaClose.TextScaled = true
+btnForcaClose.Font = Enum.Font.GothamBold
+btnForcaClose.AutoButtonColor = false
+btnForcaClose.BorderSizePixel = 0
+btnForcaClose.Parent = forcaPanel
+
+local btnForcaCloseCorner = Instance.new("UICorner")
+btnForcaCloseCorner.CornerRadius = UDim.new(1, 0)
+btnForcaCloseCorner.Parent = btnForcaClose
+
+local btnForcaCloseSize = Instance.new("UITextSizeConstraint")
+btnForcaCloseSize.MaxTextSize = 16
+btnForcaCloseSize.Parent = btnForcaClose
+
+local forcaSelecionado = Instance.new("TextLabel")
+forcaSelecionado.Size = UDim2.new(1, 0, 0, 25)
+forcaSelecionado.Position = UDim2.new(0, 0, 0, 45)
+forcaSelecionado.BackgroundTransparency = 1
+forcaSelecionado.Text = "Selecionado: " .. FORCA_PADRAO
+forcaSelecionado.TextColor3 = Color3.fromRGB(150, 200, 255)
+forcaSelecionado.TextScaled = true
+forcaSelecionado.Font = Enum.Font.Gotham
+forcaSelecionado.Parent = forcaPanel
+
+local forcaSelSize = Instance.new("UITextSizeConstraint")
+forcaSelSize.MaxTextSize = 16
+forcaSelSize.Parent = forcaSelecionado
+
+local forcaAplicado = Instance.new("TextLabel")
+forcaAplicado.Size = UDim2.new(1, 0, 0, 20)
+forcaAplicado.Position = UDim2.new(0, 0, 0, 68)
+forcaAplicado.BackgroundTransparency = 1
+forcaAplicado.Text = "✔ Aplicado: " .. FORCA_PADRAO
+forcaAplicado.TextColor3 = Color3.fromRGB(100, 255, 150)
+forcaAplicado.TextScaled = true
+forcaAplicado.Font = Enum.Font.Gotham
+forcaAplicado.Parent = forcaPanel
+
+local forcaAplSize = Instance.new("UITextSizeConstraint")
+forcaAplSize.MaxTextSize = 14
+forcaAplSize.Parent = forcaAplicado
+
+local forcaSliderBg = Instance.new("Frame")
+forcaSliderBg.Size = UDim2.new(0.85, 0, 0, 10)
+forcaSliderBg.Position = UDim2.new(0.075, 0, 0, 100)
+forcaSliderBg.BackgroundColor3 = Color3.fromRGB(60, 70, 90)
+forcaSliderBg.BorderSizePixel = 0
+forcaSliderBg.Parent = forcaPanel
+
+local forcaSliderBgCorner = Instance.new("UICorner")
+forcaSliderBgCorner.CornerRadius = UDim.new(1, 0)
+forcaSliderBgCorner.Parent = forcaSliderBg
+
+local forcaSliderFill = Instance.new("Frame")
+forcaSliderFill.Size = UDim2.new(0.022, 0, 1, 0)
+forcaSliderFill.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+forcaSliderFill.BorderSizePixel = 0
+forcaSliderFill.Parent = forcaSliderBg
+
+local forcaSliderFillCorner = Instance.new("UICorner")
+forcaSliderFillCorner.CornerRadius = UDim.new(1, 0)
+forcaSliderFillCorner.Parent = forcaSliderFill
+
+local forcaSliderBtn = Instance.new("TextButton")
+forcaSliderBtn.Size = UDim2.new(0, 22, 0, 22)
+forcaSliderBtn.Position = UDim2.new(0.022, -11, 0.5, -11)
+forcaSliderBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+forcaSliderBtn.Text = ""
+forcaSliderBtn.BorderSizePixel = 0
+forcaSliderBtn.AutoButtonColor = false
+forcaSliderBtn.Parent = forcaSliderBg
+
+local forcaSliderBtnCorner = Instance.new("UICorner")
+forcaSliderBtnCorner.CornerRadius = UDim.new(1, 0)
+forcaSliderBtnCorner.Parent = forcaSliderBtn
+
+local forcaMin = Instance.new("TextLabel")
+forcaMin.Size = UDim2.new(0, 40, 0, 20)
+forcaMin.Position = UDim2.new(0.075, 0, 0, 115)
+forcaMin.BackgroundTransparency = 1
+forcaMin.Text = "30"
+forcaMin.TextColor3 = Color3.fromRGB(150, 160, 180)
+forcaMin.TextScaled = true
+forcaMin.Font = Enum.Font.Gotham
+forcaMin.Parent = forcaPanel
+
+local forcaMinSize = Instance.new("UITextSizeConstraint")
+forcaMinSize.MaxTextSize = 14
+forcaMinSize.Parent = forcaMin
+
+local forcaMax = Instance.new("TextLabel")
+forcaMax.Size = UDim2.new(0, 40, 0, 20)
+forcaMax.Position = UDim2.new(0.925, -40, 0, 115)
+forcaMax.BackgroundTransparency = 1
+forcaMax.Text = "900"
+forcaMax.TextColor3 = Color3.fromRGB(150, 160, 180)
+forcaMax.TextScaled = true
+forcaMax.Font = Enum.Font.Gotham
+forcaMax.Parent = forcaPanel
+
+local forcaMaxSize = Instance.new("UITextSizeConstraint")
+forcaMaxSize.MaxTextSize = 14
+forcaMaxSize.Parent = forcaMax
+
+local btnAplicarForca = Instance.new("TextButton")
+btnAplicarForca.Size = UDim2.new(0.85, 0, 0, 35)
+btnAplicarForca.Position = UDim2.new(0.075, 0, 0, 150)
+btnAplicarForca.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+btnAplicarForca.Text = "✅ APLICAR FORÇA"
+btnAplicarForca.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnAplicarForca.TextScaled = true
+btnAplicarForca.Font = Enum.Font.GothamBold
+btnAplicarForca.AutoButtonColor = false
+btnAplicarForca.BorderSizePixel = 0
+btnAplicarForca.Parent = forcaPanel
+
+local btnAplCorner = Instance.new("UICorner")
+btnAplCorner.CornerRadius = UDim.new(0, 8)
+btnAplCorner.Parent = btnAplicarForca
+
+local btnAplSize = Instance.new("UITextSizeConstraint")
+btnAplSize.MaxTextSize = 16
+btnAplSize.Parent = btnAplicarForca
+
+local btnAbrirForca = Instance.new("TextButton")
+btnAbrirForca.Name = "BtnAbrirForca"
+btnAbrirForca.Size = UDim2.new(0, 120, 0, 40)
+btnAbrirForca.Position = UDim2.new(1, -150, 0, 120)
+btnAbrirForca.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+btnAbrirForca.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnAbrirForca.Text = "Abrir UI de força"
+btnAbrirForca.TextScaled = true
+btnAbrirForca.Font = Enum.Font.GothamBold
+btnAbrirForca.AutoButtonColor = false
+btnAbrirForca.BorderSizePixel = 0
+btnAbrirForca.Visible = false
+btnAbrirForca.Parent = screenGui
+
+local btnAbrirCorner = Instance.new("UICorner")
+btnAbrirCorner.CornerRadius = UDim.new(0, 10)
+btnAbrirCorner.Parent = btnAbrirForca
+
+local btnAbrirSize = Instance.new("UITextSizeConstraint")
+btnAbrirSize.MaxTextSize = 14
+btnAbrirSize.Parent = btnAbrirForca
+
+local btnResetarForca = Instance.new("TextButton")
+btnResetarForca.Name = "BtnResetarForca"
+btnResetarForca.Size = UDim2.new(0, 120, 0, 40)
+btnResetarForca.Position = UDim2.new(1, -150, 0, 165)
+btnResetarForca.BackgroundColor3 = COR_VERMELHO
+btnResetarForca.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnResetarForca.Text = "Resetar Força"
+btnResetarForca.TextScaled = true
+btnResetarForca.Font = Enum.Font.GothamBold
+btnResetarForca.AutoButtonColor = false
+btnResetarForca.BorderSizePixel = 0
+btnResetarForca.Visible = false
+btnResetarForca.Parent = screenGui
+
+local btnResetCorner = Instance.new("UICorner")
+btnResetCorner.CornerRadius = UDim.new(0, 10)
+btnResetCorner.Parent = btnResetarForca
+
+local btnResetTextSize = Instance.new("UITextSizeConstraint")
+btnResetTextSize.MaxTextSize = 14
+btnResetTextSize.Parent = btnResetarForca
+
+print("[jumpindex] 10. UI de força criada")
+
+local forcaTemporaria = FORCA_PADRAO
+local arrastando = false
+
+local function atualizarSlider()
+    local proporcao = (forcaTemporaria - 30) / (900 - 30)
+    proporcao = math.clamp(proporcao, 0, 1)
+    forcaSliderFill.Size = UDim2.new(proporcao, 0, 1, 0)
+    forcaSliderBtn.Position = UDim2.new(proporcao, -11, 0.5, -11)
+    forcaSelecionado.Text = "Selecionado: " .. math.floor(forcaTemporaria)
+end
+
+local function definirForcaX(xAbs)
+    local sx = forcaSliderBg.AbsolutePosition.X
+    local sw = forcaSliderBg.AbsoluteSize.X
+    local prop = (xAbs - sx) / sw
+    prop = math.clamp(prop, 0, 1)
+    forcaTemporaria = 30 + prop * (900 - 30)
+    atualizarSlider()
+end
+
+forcaSliderBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then arrastando = true end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if arrastando and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then definirForcaX(input.Position.X) end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then arrastando = false end
+end)
+
+forcaSliderBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then definirForcaX(input.Position.X) end
+end)
+
+atualizarSlider()
+
+btnAplicarForca.MouseButton1Click:Connect(function()
+    forcaPulo = math.floor(forcaTemporaria)
+    forcaAplicado.Text = "✔ Aplicado: " .. forcaPulo
+    btnAplicarForca.Text = "✅ APLICADO!"
+    btnAplicarForca.BackgroundColor3 = Color3.fromRGB(50, 200, 100)
+    task.wait(0.8)
+    btnAplicarForca.Text = "✅ APLICAR FORÇA"
+    btnAplicarForca.BackgroundColor3 = Color3.fromRGB(50, 130, 255)
+    forcaAlterada = true
+    atualizarVisualBotao()
+end)
+
+print("[jumpindex] 11. Slider e botão aplicar conectados")
+
+local KEYS_VALIDAS = { ["jumpindex"] = true, ["jump index"] = true }
+
+local function abrirForcaUI()
+    forcaPanel.Visible = true
+    btnAbrirForca.Visible = false
+    btnResetarForca.Visible = false
+end
+
+local function fecharForcaUI()
+    forcaPanel.Visible = false
+    btnAbrirForca.Visible = true
+    if forcaAlterada then
+        btnResetarForca.Visible = true
+    end
+end
+
+btnVerificar.MouseButton1Click:Connect(function()
+    local digitada = keyField.Text
+    if KEYS_VALIDAS[digitada] then
+        keyMsg.Text = "OK"
+        keyMsg.TextColor3 = Color3.fromRGB(120, 255, 160)
+        task.wait(0.5)
+        keyPanel.Visible = false
+        btnInicializar.Visible = false
+        abrirForcaUI()
+    else
+        keyMsg.Text = "❌ Key inválida"
+        keyMsg.TextColor3 = Color3.fromRGB(255, 90, 90)
+    end
+end)
+
+btnKeyClose.MouseButton1Click:Connect(function() keyPanel.Visible = false end)
+
+btnInicializar.MouseButton1Click:Connect(function()
+    keyPanel.Visible = true
+    keyMsg.Text = "Inicializando botão de força / Initializing power button"
+    keyMsg.TextColor3 = Color3.fromRGB(150, 200, 255)
+    task.wait(1)
+    keyMsg.Text = "Inicializando o sistema de Key / Initializing Key system"
+    task.wait(1)
+    keyMsg.Text = ""
+    keyField.Text = ""
+    keyField:CaptureFocus()
+end)
+
+btnForcaClose.MouseButton1Click:Connect(function() fecharForcaUI() end)
+btnAbrirForca.MouseButton1Click:Connect(function() abrirForcaUI() end)
+
+btnResetarForca.MouseButton1Click:Connect(function()
+    forcaPulo = 30
+    forcaTemporaria = 30
+    forcaAlterada = false
+    atualizarVisualBotao()
+    atualizarSlider()
+    btnResetarForca.Visible = false
+end)
+
+print("[jumpindex] 12. Lógica do Key System conectada")
+
 local introGui = Instance.new("ScreenGui")
 introGui.Name = "JumpIndexIntro"
 introGui.ResetOnSpawn = false
@@ -327,10 +820,10 @@ painelCorner.CornerRadius = UDim.new(0, 16)
 painelCorner.Parent = painel
 
 local painelGrad = Instance.new("UIGradient")
-painelGrad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 20, 55)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 55, 120)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 130, 220))
+painelGrad.Color = ColorSequence.new({ 
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 20, 55)), 
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 55, 120)), 
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 130, 220)) 
 })
 painelGrad.Rotation = 45
 painelGrad.Parent = painel
@@ -356,15 +849,12 @@ local logoSize = Instance.new("UITextSizeConstraint")
 logoSize.MaxTextSize = 26
 logoSize.Parent = introLogo
 
--- ========== TEXTOS PT/EN COM MESMO TAMANHO ==========
 local TAMANHO_TEXTO = 15
 
--- Texto PT
 local textoPT = Instance.new("TextLabel")
 textoPT.Size = UDim2.new(1, -40, 0, 22)
 textoPT.Position = UDim2.new(0, 20, 0, 78)
 textoPT.BackgroundTransparency = 1
-textoPT.Text = ""
 textoPT.TextColor3 = Color3.fromRGB(220, 235, 255)
 textoPT.TextScaled = true
 textoPT.Font = Enum.Font.GothamBold
@@ -376,12 +866,10 @@ local ptSize = Instance.new("UITextSizeConstraint")
 ptSize.MaxTextSize = TAMANHO_TEXTO
 ptSize.Parent = textoPT
 
--- Texto EN (mesmo tamanho)
 local textoEN = Instance.new("TextLabel")
 textoEN.Size = UDim2.new(1, -40, 0, 22)
 textoEN.Position = UDim2.new(0, 20, 0, 101)
 textoEN.BackgroundTransparency = 1
-textoEN.Text = ""
 textoEN.TextColor3 = Color3.fromRGB(150, 180, 220)
 textoEN.TextScaled = true
 textoEN.Font = Enum.Font.Gotham
@@ -392,7 +880,6 @@ textoEN.Parent = painel
 local enSize = Instance.new("UITextSizeConstraint")
 enSize.MaxTextSize = TAMANHO_TEXTO
 enSize.Parent = textoEN
--- ====================================================
 
 local barBg = Instance.new("Frame")
 barBg.Size = UDim2.new(0, 320, 0, 8)
@@ -432,71 +919,71 @@ local pctSize = Instance.new("UITextSizeConstraint")
 pctSize.MaxTextSize = 13
 pctSize.Parent = percentLabel
 
-------------------------------------------------------------
--- ANIMAÇÃO DE INTRO
-------------------------------------------------------------
+print("[jumpindex] 13. Intro criada")
+
 task.spawn(function()
-    task.wait(0.4)
+    local sucesso, erro = pcall(function()
+        task.wait(0.4)
+        TweenService:Create(painel, TweenInfo.new(0.6), {BackgroundTransparency = 0}):Play()
+        TweenService:Create(painelStroke, TweenInfo.new(0.6), {Transparency = 0.4}):Play()
+        TweenService:Create(introLogo, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        TweenService:Create(textoPT, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        TweenService:Create(textoEN, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        TweenService:Create(barBg, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
+        TweenService:Create(barFill, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
+        TweenService:Create(percentLabel, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
 
-    TweenService:Create(painel, TweenInfo.new(0.6), {BackgroundTransparency = 0}):Play()
-    TweenService:Create(painelStroke, TweenInfo.new(0.6), {Transparency = 0.4}):Play()
-    TweenService:Create(introLogo, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-    TweenService:Create(textoPT, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-    TweenService:Create(textoEN, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-    TweenService:Create(barBg, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
-    TweenService:Create(barFill, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
-    TweenService:Create(percentLabel, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
+        task.wait(0.7)
 
-    task.wait(0.7)
+        local etapas = {
+            {tempo = 1, pt = "Inicializando", en = "Initializing", fill = 1/6, pct = "17%"},
+            {tempo = 1, pt = "Criando botão", en = "Creating button", fill = 2/6, pct = "33%"},
+            {tempo = 1, pt = "Criando infinite jump", en = "Creating infinite jump", fill = 3/6, pct = "50%"},
+            {tempo = 1, pt = "Criando o botão de força", en = "Creating power button", fill = 4/6, pct = "67%"},
+            {tempo = 5, pt = "Conectando ao Roblox", en = "Connecting to Roblox", fill = 5/6, pct = "83%"},
+            {tempo = 1, pt = "Fazendo o load do código", en = "Loading the code", fill = 6/6, pct = "100%"},
+        }
 
-    local etapas = {
-        {tempo = 1, pt = "Inicializando",                 en = "Initializing",              fill = 1/6, pct = "17%"},
-        {tempo = 1, pt = "Criando botão",                 en = "Creating button",           fill = 2/6, pct = "33%"},
-        {tempo = 1, pt = "Criando infinite jump",         en = "Creating infinite jump",    fill = 3/6, pct = "50%"},
-        {tempo = 1, pt = "Conectando ao Roblox",          en = "Connecting to Roblox",      fill = 4/6, pct = "67%"},
-        {tempo = 5, pt = "Fazendo o load do código",      en = "Loading the code",          fill = 5/6, pct = "83%"},
-        {tempo = 1, pt = "Load do Jump Button completo",  en = "Jump Button load complete", fill = 6/6, pct = "100%"},
-    }
+        for _, etapa in ipairs(etapas) do
+            textoPT.Text = etapa.pt
+            textoEN.Text = etapa.en
+            percentLabel.Text = etapa.pct
+            
+            TweenService:Create(barFill, TweenInfo.new(etapa.tempo, Enum.EasingStyle.Linear), { Size = UDim2.new(etapa.fill, 0, 1, 0) }):Play()
+            
+            task.wait(etapa.tempo)
+            
+            textoPT.Text = "Completo"
+            textoEN.Text = "Complete"
+            textoPT.TextColor3 = COR_CIANO
+            
+            task.wait(0.50)
+            
+            textoPT.TextColor3 = Color3.fromRGB(220, 235, 255)
+        end
 
-    for _, etapa in ipairs(etapas) do
-        textoPT.Text = etapa.pt
-        textoEN.Text = etapa.en
-        percentLabel.Text = etapa.pct
-
-        TweenService:Create(barFill, TweenInfo.new(etapa.tempo, Enum.EasingStyle.Linear), {
-            Size = UDim2.new(etapa.fill, 0, 1, 0)
-        }):Play()
-
-        task.wait(etapa.tempo)
-
-        textoPT.Text = "Completo"
-        textoEN.Text = "Complete"
-        task.wait(0.03)
-    end
-
-    -- Garante que a barra chegou em 100%
-    barFill.Size = UDim2.new(1, 0, 1, 0)
-    percentLabel.Text = "100%"
-    task.wait(0.3)
-
-    -- Painel some primeiro
-    TweenService:Create(painel, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(painelStroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
-    TweenService:Create(introLogo, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-    TweenService:Create(textoPT, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-    TweenService:Create(textoEN, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-    TweenService:Create(barBg, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(barFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(percentLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-
-    -- Depois a tela preta some
-    task.wait(0.45)
-    TweenService:Create(telaPreta, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
-
-    task.wait(0.45)
-    introGui:Destroy()
-
-    print("[jumpindex] Load pronto! Tela preta removida.")
+        barFill.Size = UDim2.new(1, 0, 1, 0)
+        percentLabel.Text = "100%"
+        task.wait(0.3)
+        
+        TweenService:Create(painel, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(painelStroke, TweenInfo.new(0.4), {Transparency = 1}):Play()
+        TweenService:Create(introLogo, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        TweenService:Create(textoPT, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        TweenService:Create(textoEN, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        TweenService:Create(barBg, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(barFill, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(percentLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+        
+        task.wait(0.45)
+        TweenService:Create(telaPreta, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+        task.wait(0.45)
+    end)
+    
+    if not sucesso then warn("[jumpindex] ERRO NA INTRO: " .. tostring(erro)) end
+    if introGui then introGui:Destroy() end
+    btnInicializar.Visible = true
+    print("[jumpindex] 15. Intro finalizada. Botão Inicializar visível.")
 end)
 
-print("[jumpindex] Carregado! Iniciando animação...")
+print("[jumpindex] 16. Script carregado com sucesso!")
